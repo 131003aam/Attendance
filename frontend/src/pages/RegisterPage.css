@@ -1,0 +1,164 @@
+.register-shell {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at top, #1c1c1c 0%, #050505 70%);
+  padding: 32px 16px;
+}
+
+.register-frame {
+  width: min(500px, 90vw);
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.register-header {
+  text-align: left;
+  margin-bottom: 32px;
+}
+
+.register-header h1 {
+  margin: 8px 0;
+  font-size: 28px;
+  letter-spacing: 0.08em;
+}
+
+.register-header p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 14px;
+}
+
+.login-link {
+  margin-top: 12px;
+  display: inline-block;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s ease;
+}
+
+.login-link:hover {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: underline;
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.register-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.register-form input,
+.register-form select {
+  background: #050505;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 14px 18px;
+  color: #f2f2f2;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  transition: border-color 0.2s ease;
+}
+
+.register-form select {
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.register-form input:focus,
+.register-form select:focus {
+  outline: none;
+  border-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+.register-form input:disabled,
+.register-form select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.submit-button {
+  margin-top: 10px;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 18px;
+  background: linear-gradient(120deg, #ffffff, #bfbfbf);
+  color: #050505;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submit-button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(5, 5, 5, 0.3);
+  border-top-color: #050505;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.register-message {
+  margin-top: 28px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 14px;
+  animation: slideIn 0.3s ease-out;
+}
+
+.register-message.success {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.register-message.error {
+  border-color: rgba(255, 64, 64, 0.4);
+  background: rgba(255, 64, 64, 0.05);
+  color: #ff8080;
+}
+
+@media (max-width: 480px) {
+  .register-frame {
+    padding: 28px 24px;
+  }
+}
+

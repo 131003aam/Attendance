@@ -17,8 +17,8 @@ public class EmployeeDAOImpl implements EmployeeDAO {
     private JdbcTemplate jdbcTemplate;
 
     @Override
-    public Employee findByEmployeeId(String employeeId) {
-        String sql = "SELECT * FROM employees WHERE employee_id = ?";
+    public Employee findByEmployeeId(int employeeId) {
+        String sql = "SELECT * FROM employee WHERE EID = ?";
         try {
             return jdbcTemplate.queryForObject(sql, new Object[]{employeeId}, new EmployeeRowMapper());
         } catch (EmptyResultDataAccessException e) {
@@ -27,9 +27,9 @@ public class EmployeeDAOImpl implements EmployeeDAO {
     }
 
     @Override
-    public void updatePassword(String employeeId, String newPasswordHash) {
-        String sql = "UPDATE employees SET password_hash = ? WHERE employee_id = ?";
-        jdbcTemplate.update(sql, newPasswordHash, employeeId);
+    public void updatePassword(int employeeId, String newPassword) {
+        String sql = "UPDATE employee SET Password = ? WHERE EID = ?";
+        jdbcTemplate.update(sql, newPassword, employeeId);
     }
 }
 
@@ -37,16 +37,13 @@ class EmployeeRowMapper implements RowMapper<Employee> {
     @Override
     public Employee mapRow(ResultSet rs, int rowNum) throws SQLException {
         Employee employee = new Employee();
-        employee.setId(rs.getString("id"));
-        employee.setEmployeeId(rs.getString("employee_id"));
-        employee.setName(rs.getString("name"));
-        employee.setGender(rs.getString("gender"));
-        employee.setDepartmentId(rs.getString("department_id"));
-        employee.setPositionId(rs.getString("position_id"));
-        employee.setContactInfo(rs.getString("contact_info"));
-        employee.setStatus(rs.getString("status"));
-        employee.setUserRole(rs.getString("user_role"));
-        employee.setPasswordHash(rs.getString("password_hash"));
+        employee.setEid(rs.getInt("EID"));
+        employee.setDid(rs.getInt("DID"));
+        employee.setPid(rs.getInt("PID"));
+        employee.setName(rs.getString("EName"));
+        employee.setSex(rs.getString("Sex"));
+        employee.setPhone(rs.getString("Phone"));
+        employee.setPassword(rs.getString("Password"));
         return employee;
     }
 }

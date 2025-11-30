@@ -17,27 +17,40 @@ public class LoginController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+        if (request.getEmployeeId() == null || request.getPassword() == null) {
+            return ResponseEntity.badRequest().body(
+                    new LoginResponse("请输入完整的账号和密码", false, null, null, null, null)
+            );
+        }
+
         if (employeeService.authenticate(request.getEmployeeId(), request.getPassword())) {
             Employee employee = employeeService.getEmployeeDetails(request.getEmployeeId());
-            LoginResponse response = new LoginResponse("登录成功", employee.getUserRole(), true);
+            LoginResponse response = new LoginResponse(
+                    "登录成功",
+                    true,
+                    employee.getEid(),
+                    employee.getName(),
+                    employee.getDid(),
+                    employee.getPid()
+            );
             return ResponseEntity.ok(response);
         } else {
-            LoginResponse response = new LoginResponse("用户名或密码错误", null, false);
+            LoginResponse response = new LoginResponse("用户名或密码错误", false, null, null, null, null);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
     }
 }
 
 class LoginRequest {
-    private String employeeId;
+    private Integer employeeId;
     private String password;
 
     // Getters and Setters
-    public String getEmployeeId() {
+    public Integer getEmployeeId() {
         return employeeId;
     }
 
-    public void setEmployeeId(String employeeId) {
+    public void setEmployeeId(Integer employeeId) {
         this.employeeId = employeeId;
     }
 
@@ -52,13 +65,24 @@ class LoginRequest {
 
 class LoginResponse {
     private String message;
-    private String role;
     private boolean success;
+    private Integer employeeId;
+    private String employeeName;
+    private Integer departmentId;
+    private Integer positionId;
 
-    public LoginResponse(String message, String role, boolean success) {
+    public LoginResponse(String message,
+                         boolean success,
+                         Integer employeeId,
+                         String employeeName,
+                         Integer departmentId,
+                         Integer positionId) {
         this.message = message;
-        this.role = role;
         this.success = success;
+        this.employeeId = employeeId;
+        this.employeeName = employeeName;
+        this.departmentId = departmentId;
+        this.positionId = positionId;
     }
 
     // Getters and Setters
@@ -70,20 +94,44 @@ class LoginResponse {
         this.message = message;
     }
 
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
     public boolean isSuccess() {
         return success;
     }
 
     public void setSuccess(boolean success) {
         this.success = success;
+    }
+
+    public Integer getEmployeeId() {
+        return employeeId;
+    }
+
+    public void setEmployeeId(Integer employeeId) {
+        this.employeeId = employeeId;
+    }
+
+    public String getEmployeeName() {
+        return employeeName;
+    }
+
+    public void setEmployeeName(String employeeName) {
+        this.employeeName = employeeName;
+    }
+
+    public Integer getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Integer departmentId) {
+        this.departmentId = departmentId;
+    }
+
+    public Integer getPositionId() {
+        return positionId;
+    }
+
+    public void setPositionId(Integer positionId) {
+        this.positionId = positionId;
     }
 }
 
