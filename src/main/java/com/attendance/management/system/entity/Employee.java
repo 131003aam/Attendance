@@ -1,32 +1,36 @@
 package com.attendance.management.system.entity;
 
 public class Employee {
-    private String id;
-    private String employeeId;  //员工ID
-    private String name;    //姓名
-    private String gender;  //性别
-    private String departmentId;    //部门ID
-    private String positionId;  //职位ID
-    private String contactInfo; //联系方式
-    private String status;  //状态
-    private String userRole;    //用户角色
-    private String passwordHash;    //密码
+    private Integer eid;           // 员工ID
+    private Integer did;           // 部门ID
+    private Integer pid;           // 职务ID
+    private String name;           // 姓名
+    private String sex;            // 性别
+    private String phone;          // 联系方式
+    private String password;       // 账号密码
 
-    // Getters and Setters
-    public String getId() {
-        return id;
+    public Integer getEid() {
+        return eid;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public void setEid(Integer eid) {
+        this.eid = eid;
     }
 
-    public String getEmployeeId() {
-        return employeeId;
+    public Integer getDid() {
+        return did;
     }
 
-    public void setEmployeeId(String employeeId) {
-        this.employeeId = employeeId;
+    public void setDid(Integer did) {
+        this.did = did;
+    }
+
+    public Integer getPid() {
+        return pid;
+    }
+
+    public void setPid(Integer pid) {
+        this.pid = pid;
     }
 
     public String getName() {
@@ -37,60 +41,28 @@ public class Employee {
         this.name = name;
     }
 
-    public String getGender() {
-        return gender;
+    public String getSex() {
+        return sex;
     }
 
-    public void setGender(String gender) {
-        this.gender = gender;
+    public void setSex(String sex) {
+        this.sex = sex;
     }
 
-    public String getDepartmentId() {
-        return departmentId;
+    public String getPhone() {
+        return phone;
     }
 
-    public void setDepartmentId(String departmentId) {
-        this.departmentId = departmentId;
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
-    public String getPositionId() {
-        return positionId;
+    public String getPassword() {
+        return password;
     }
 
-    public void setPositionId(String positionId) {
-        this.positionId = positionId;
-    }
-
-    public String getContactInfo() {
-        return contactInfo;
-    }
-
-    public void setContactInfo(String contactInfo) {
-        this.contactInfo = contactInfo;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getUserRole() {
-        return userRole;
-    }
-
-    public void setUserRole(String userRole) {
-        this.userRole = userRole;
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
+    public void setPassword(String password) {
+        this.password = password;
     }
 }
 

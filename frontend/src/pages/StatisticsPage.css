@@ -1,0 +1,48 @@
+.statistics-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.statistics-page h1 {
+  font-size: 28px;
+  margin: 0 0 32px 0;
+  color: #ffffff;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+}
+
+.stat-card {
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 12px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.stat-value.warning {
+  color: #ff9800;
+}
+
+.loading,
+.empty-state {
+  text-align: center;
+  padding: 48px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
