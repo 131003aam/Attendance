@@ -11,10 +11,10 @@ export interface LoginRequest {
 export interface LoginResponse {
   message: string
   success: boolean
-  employeeId?: number | null
+  employeeId?: number | string | null  // 支持number和string类型
   employeeName?: string | null
-  departmentId?: number | null
-  positionId?: number | null
+  departmentId?: number | string | null  // 支持number和string类型
+  positionId?: number | string | null  // 支持number和string类型
   role?: UserRole | null
   token?: string | null
 }

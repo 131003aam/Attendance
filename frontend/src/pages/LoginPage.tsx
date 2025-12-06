@@ -81,21 +81,34 @@ const LoginPage = () => {
       if (response.success && response.employeeId) {
         setStatus('success')
         setMessage('登录成功！正在跳转...')
+        
+        // 处理ID转换：后端返回String，前端UserInfo使用number
+        // 如果后端返回字符串，提取数字部分
+        const employeeIdNum = typeof response.employeeId === 'string' 
+          ? parseInt(response.employeeId.replace(/^0+/, '') || '0', 10) 
+          : (response.employeeId as number)
+        const departmentIdNum = typeof response.departmentId === 'string'
+          ? parseInt(response.departmentId.replace(/^0+/, '') || '0', 10)
+          : (response.departmentId as number || 0)
+        const positionIdNum = typeof response.positionId === 'string'
+          ? parseInt(response.positionId.replace(/^0+/, '') || '0', 10)
+          : (response.positionId as number || 0)
+        
         setProfile({
-          employeeId: response.employeeId,
+          employeeId: employeeIdNum,
           name: response.employeeName ?? '',
-          departmentId: response.departmentId,
-          positionId: response.positionId,
+          departmentId: departmentIdNum,
+          positionId: positionIdNum,
           role: response.role ?? 'EMPLOYEE',
         })
         
         // 保存用户信息到 AuthContext
         authLogin({
-          employeeId: response.employeeId,
+          employeeId: employeeIdNum,
           name: response.employeeName ?? '',
           phone: '',
-          departmentId: response.departmentId ?? 0,
-          positionId: response.positionId ?? 0,
+          departmentId: departmentIdNum,
+          positionId: positionIdNum,
           role: (response.role === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE') as 'ADMIN' | 'EMPLOYEE',
         })
         

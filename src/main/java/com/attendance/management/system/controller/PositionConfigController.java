@@ -14,8 +14,11 @@ import java.util.Optional;
 @CrossOrigin(origins = "*")
 public class PositionConfigController {
 
-    @Autowired
-    private PositionConfigRepository positionConfigRepository;
+    private final PositionConfigRepository positionConfigRepository;
+
+    public PositionConfigController(PositionConfigRepository positionConfigRepository) {
+        this.positionConfigRepository = positionConfigRepository;
+    }
 
     /**
      * 获取所有职务配置
@@ -51,12 +54,13 @@ public class PositionConfigController {
     /**
      * 更新职务配置
      */
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updatePosition(@PathVariable Long id, @RequestBody PositionConfig positionConfig) {
-        Optional<PositionConfig> existingPosition = positionConfigRepository.findById(id);
+    @PutMapping("/{positionId}")
+    public ResponseEntity<?> updatePosition(@PathVariable String positionId, @RequestBody PositionConfig positionConfig) {
+        Optional<PositionConfig> existingPosition = positionConfigRepository.findByPositionId(positionId);
         if (existingPosition.isPresent()) {
             PositionConfig position = existingPosition.get();
-            position.setPositionId(positionConfig.getPositionId());
+            // 确保positionId匹配
+            positionConfig.setPositionId(positionId);
             position.setPositionName(positionConfig.getPositionName());
             position.setWorkStartTime(positionConfig.getWorkStartTime());
             position.setWorkEndTime(positionConfig.getWorkEndTime());
@@ -73,10 +77,11 @@ public class PositionConfigController {
     /**
      * 删除职务配置
      */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePosition(@PathVariable Long id) {
-        if (positionConfigRepository.existsById(id)) {
-            positionConfigRepository.deleteById(id);
+    @DeleteMapping("/{positionId}")
+    public ResponseEntity<Void> deletePosition(@PathVariable String positionId) {
+        Optional<PositionConfig> existingPosition = positionConfigRepository.findByPositionId(positionId);
+        if (existingPosition.isPresent()) {
+            positionConfigRepository.delete(existingPosition.get());
             return ResponseEntity.ok().build();
         } else {
             return ResponseEntity.notFound().build();

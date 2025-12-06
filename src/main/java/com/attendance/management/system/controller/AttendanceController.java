@@ -2,7 +2,6 @@ package com.attendance.management.system.controller;
 
 import com.attendance.management.system.entity.AttendanceRecord;
 import com.attendance.management.system.service.AttendanceService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,21 +15,23 @@ import java.util.Optional;
 @CrossOrigin(origins = "*")
 public class AttendanceController {
 
-    @Autowired
-    private AttendanceService attendanceService;
+    private final AttendanceService attendanceService;
+
+    public AttendanceController(AttendanceService attendanceService) {
+        this.attendanceService = attendanceService;
+    }
 
     /**
      * 上班打卡
      */
     @PostMapping("/check-in")
     public ResponseEntity<?> checkIn(@RequestBody Map<String, String> request) {
-        try {
-            String employeeId = request.get("employeeId");
-            AttendanceRecord record = attendanceService.checkIn(employeeId);
-            return ResponseEntity.ok(record);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        String employeeId = request.get("employeeId");
+        if (employeeId == null || employeeId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "员工ID不能为空"));
         }
+        AttendanceRecord record = attendanceService.checkIn(employeeId);
+        return ResponseEntity.ok(record);
     }
 
     /**
@@ -38,13 +39,12 @@ public class AttendanceController {
      */
     @PostMapping("/check-out")
     public ResponseEntity<?> checkOut(@RequestBody Map<String, String> request) {
-        try {
-            String employeeId = request.get("employeeId");
-            AttendanceRecord record = attendanceService.checkOut(employeeId);
-            return ResponseEntity.ok(record);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        String employeeId = request.get("employeeId");
+        if (employeeId == null || employeeId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "员工ID不能为空"));
         }
+        AttendanceRecord record = attendanceService.checkOut(employeeId);
+        return ResponseEntity.ok(record);
     }
 
     /**
@@ -52,13 +52,12 @@ public class AttendanceController {
      */
     @GetMapping("/today")
     public ResponseEntity<?> getTodayAttendance(@RequestParam String employeeId) {
-        try {
-            Optional<AttendanceRecord> record = attendanceService.getAttendanceRecord(
-                    employeeId, LocalDate.now());
-            return ResponseEntity.ok(record.orElse(null));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        if (employeeId == null || employeeId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "员工ID不能为空"));
         }
+        Optional<AttendanceRecord> record = attendanceService.getAttendanceRecord(
+                employeeId, LocalDate.now());
+        return ResponseEntity.ok(record.orElse(null));
     }
 
     /**
@@ -69,6 +68,9 @@ public class AttendanceController {
             @RequestParam String employeeId,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
+        if (employeeId == null || employeeId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "员工ID不能为空"));
+        }
         try {
             LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now().minusWeeks(1);
             LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
@@ -76,7 +78,7 @@ public class AttendanceController {
             List<AttendanceRecord> records = attendanceService.getAttendanceRecords(employeeId, start, end);
             return ResponseEntity.ok(records);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", "日期格式错误: " + e.getMessage()));
         }
     }
 
@@ -96,7 +98,7 @@ public class AttendanceController {
                     departmentId, start, end);
             return ResponseEntity.ok(records);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", "日期格式错误: " + e.getMessage()));
         }
     }
 }

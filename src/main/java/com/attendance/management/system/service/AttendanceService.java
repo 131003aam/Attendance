@@ -1,12 +1,16 @@
 package com.attendance.management.system.service;
 
+import com.attendance.management.system.constant.AttendanceStatus;
+import com.attendance.management.system.constant.RecordType;
 import com.attendance.management.system.entity.AttendanceRecord;
 import com.attendance.management.system.entity.Employee;
 import com.attendance.management.system.entity.PositionConfig;
+import com.attendance.management.system.exception.AttendanceException;
+import com.attendance.management.system.exception.EmployeeNotFoundException;
+import com.attendance.management.system.exception.PositionConfigNotFoundException;
 import com.attendance.management.system.repository.AttendanceRecordRepository;
 import com.attendance.management.system.repository.EmployeeRepository;
 import com.attendance.management.system.repository.PositionConfigRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -17,14 +21,17 @@ import java.util.Optional;
 @Service
 public class AttendanceService {
 
-    @Autowired
-    private AttendanceRecordRepository attendanceRecordRepository;
+    private final AttendanceRecordRepository attendanceRecordRepository;
+    private final EmployeeRepository employeeRepository;
+    private final PositionConfigRepository positionConfigRepository;
 
-    @Autowired
-    private EmployeeRepository employeeRepository;
-
-    @Autowired
-    private PositionConfigRepository positionConfigRepository;
+    public AttendanceService(AttendanceRecordRepository attendanceRecordRepository,
+                             EmployeeRepository employeeRepository,
+                             PositionConfigRepository positionConfigRepository) {
+        this.attendanceRecordRepository = attendanceRecordRepository;
+        this.employeeRepository = employeeRepository;
+        this.positionConfigRepository = positionConfigRepository;
+    }
 
     /**
      * 上班打卡
@@ -35,12 +42,12 @@ public class AttendanceService {
 
         // 查询员工信息
         Employee employee = employeeRepository.findByEmployeeId(employeeId)
-                .orElseThrow(() -> new RuntimeException("员工不存在"));
+                .orElseThrow(() -> new EmployeeNotFoundException("员工不存在: " + employeeId));
 
         // 查询职务配置
         PositionConfig positionConfig = positionConfigRepository
                 .findByPositionId(employee.getPositionId())
-                .orElseThrow(() -> new RuntimeException("未找到该职务的配置信息"));
+                .orElseThrow(() -> new PositionConfigNotFoundException("未找到该职务的配置信息: " + employee.getPositionId()));
 
         // 查询当天是否已有打卡记录
         Optional<AttendanceRecord> existingRecord = attendanceRecordRepository
@@ -51,13 +58,13 @@ public class AttendanceService {
             record = existingRecord.get();
             // 如果已经有上班打卡记录，则不允许重复打卡
             if (record.getCheckInTime() != null) {
-                throw new RuntimeException("今天已经打过上班卡了");
+                throw new AttendanceException("今天已经打过上班卡了");
             }
         } else {
             record = new AttendanceRecord();
             record.setEmployeeId(employeeId);
             record.setDate(today);
-            record.setRecordType("NORMAL");
+            record.setRecordType(RecordType.NORMAL);
         }
 
         // 设置上班打卡时间
@@ -66,9 +73,9 @@ public class AttendanceService {
         // 根据职务配置判断是否迟到
         LocalTime standardStartTime = positionConfig.getWorkStartTime();
         if (standardStartTime != null && now.isAfter(standardStartTime.plusMinutes(30))) {
-            record.setStatus("迟到"); // 迟到
+            record.setStatus(AttendanceStatus.LATE);
         } else {
-            record.setStatus("正常"); // 正常
+            record.setStatus(AttendanceStatus.NORMAL);
         }
 
         return attendanceRecordRepository.save(record);
@@ -83,22 +90,22 @@ public class AttendanceService {
 
         // 查询员工信息
         Employee employee = employeeRepository.findByEmployeeId(employeeId)
-                .orElseThrow(() -> new RuntimeException("员工不存在"));
+                .orElseThrow(() -> new EmployeeNotFoundException("员工不存在: " + employeeId));
 
         // 查询当天打卡记录
         AttendanceRecord record = attendanceRecordRepository
                 .findByEmployeeIdAndDate(employeeId, today)
-                .orElseThrow(() -> new RuntimeException("请先打上班卡"));
+                .orElseThrow(() -> new AttendanceException("请先打上班卡"));
 
         // 检查是否已经打过下班卡
         if (record.getCheckOutTime() != null) {
-            throw new RuntimeException("今天已经打过下班卡了");
+            throw new AttendanceException("今天已经打过下班卡了");
         }
 
         // 查询职务配置
         PositionConfig positionConfig = positionConfigRepository
                 .findByPositionId(employee.getPositionId())
-                .orElseThrow(() -> new RuntimeException("未找到该职务的配置信息"));
+                .orElseThrow(() -> new PositionConfigNotFoundException("未找到该职务的配置信息: " + employee.getPositionId()));
 
         // 设置下班打卡时间
         record.setCheckOutTime(now);
@@ -107,14 +114,14 @@ public class AttendanceService {
         LocalTime standardEndTime = positionConfig.getWorkEndTime();
         if (standardEndTime != null && now.isBefore(standardEndTime.minusMinutes(30))) {
             // 如果当前状态不是迟到，则标记为早退
-            if (!"迟到".equals(record.getStatus())) {
-                record.setStatus("早退"); // 早退
+            if (!AttendanceStatus.LATE.equals(record.getStatus())) {
+                record.setStatus(AttendanceStatus.EARLY_LEAVE);
             }
             // 如果已经是迟到状态，则保持迟到状态
         } else {
             // 如果当前状态不是迟到，则标记为正常
-            if (!"迟到".equals(record.getStatus())) {
-                record.setStatus("正常"); // 正常
+            if (!AttendanceStatus.LATE.equals(record.getStatus())) {
+                record.setStatus(AttendanceStatus.NORMAL);
             }
             // 如果已经是迟到状态，则保持迟到状态
         }
@@ -150,4 +157,5 @@ public class AttendanceService {
         return attendanceRecordRepository.findByDateRange(startDate, endDate);
     }
 }
+
 

@@ -13,12 +13,14 @@ const HomePage = () => {
   const [location, setLocation] = useState<string>('')
 
   useEffect(() => {
-    loadTodayAttendance()
+    if (user?.employeeId) {
+      loadTodayAttendance()
+    }
     const timer = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [user?.employeeId])
 
   useEffect(() => {
     // 获取位置信息
@@ -36,8 +38,11 @@ const HomePage = () => {
   }, [])
 
   const loadTodayAttendance = async () => {
+    if (!user?.employeeId) return
+    
     try {
-      const record = await getTodayAttendance()
+      const employeeId = String(user.employeeId).padStart(10, '0')
+      const record = await getTodayAttendance(employeeId)
       setTodayRecord(record)
     } catch (error) {
       console.error('加载今日打卡记录失败:', error)
@@ -82,20 +87,22 @@ const HomePage = () => {
     const buttonState = getButtonState()
     if (!buttonState.type || buttonState.disabled) return
 
+    if (!user?.employeeId) {
+      setMessage('用户信息错误，请重新登录')
+      return
+    }
+
     setLoading(true)
     setMessage('')
 
     try {
+      const employeeId = String(user.employeeId).padStart(10, '0')  // 确保是10位字符串
       const result = buttonState.type === 'CHECK_IN' 
-        ? await checkIn({ location })
-        : await checkOut({ location })
+        ? await checkIn({ employeeId, location })
+        : await checkOut({ employeeId, location })
 
-      if (result.success) {
-        setMessage(`打卡成功！时间：${new Date().toLocaleString()}，位置：${result.record?.checkInLocation || result.record?.checkOutLocation || location}`)
-        await loadTodayAttendance()
-      } else {
-        setMessage(result.message || '打卡失败，请稍后重试')
-      }
+      setMessage(`打卡成功！时间：${new Date().toLocaleString()}`)
+      await loadTodayAttendance()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '打卡失败，请稍后重试')
     } finally {

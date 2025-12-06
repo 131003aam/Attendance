@@ -14,7 +14,7 @@ import type {
   ApprovalRequest,
 } from './types'
 
-const MOCK_MODE = true
+const MOCK_MODE = false
 
 const MOCK_USERS: Record<
   string,
@@ -61,7 +61,7 @@ export const login = async (credentials: LoginRequest): Promise<LoginResponse> =
 
   try {
   const response = await api.post<LoginResponse>('/login', {
-    employeeId: Number(credentials.employeeId),
+    employeeId: credentials.employeeId,  // 使用字符串类型，与后端一致
     password: credentials.password,
   })
   return response.data
@@ -163,28 +163,44 @@ const mockCheckOut = async (data: AttendanceRequest): Promise<AttendanceResponse
   }
 }
 
-export const checkIn = async (data: AttendanceRequest): Promise<AttendanceResponse> => {
+export const checkIn = async (data: AttendanceRequest & { employeeId?: string }): Promise<AttendanceResponse> => {
   if (MOCK_MODE) {
     return mockCheckIn(data)
   }
 
   try {
-    const response = await api.post<AttendanceResponse>('/attendance/check-in', data)
+    const response = await api.post<AttendanceResponse>('/attendance/check-in', {
+      employeeId: data.employeeId || '',  // 需要传递employeeId
+    })
     return response.data
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const status = error.response.status
+      if (status === 400 || status === 404) {
+        throw new Error(error.response.data?.error || '打卡失败，请检查是否已打卡或员工ID是否正确')
+      }
+    }
     throw error instanceof Error ? error : new Error('打卡失败，请稍后重试')
   }
 }
 
-export const checkOut = async (data: AttendanceRequest): Promise<AttendanceResponse> => {
+export const checkOut = async (data: AttendanceRequest & { employeeId?: string }): Promise<AttendanceResponse> => {
   if (MOCK_MODE) {
     return mockCheckOut(data)
   }
 
   try {
-    const response = await api.post<AttendanceResponse>('/attendance/check-out', data)
+    const response = await api.post<AttendanceResponse>('/attendance/check-out', {
+      employeeId: data.employeeId || '',  // 需要传递employeeId
+    })
     return response.data
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const status = error.response.status
+      if (status === 400 || status === 404) {
+        throw new Error(error.response.data?.error || '打卡失败，请检查是否已打卡或员工ID是否正确')
+      }
+    }
     throw error instanceof Error ? error : new Error('打卡失败，请稍后重试')
   }
 }
@@ -211,13 +227,17 @@ const mockGetTodayAttendance = async (): Promise<AttendanceRecord | null> => {
   }
 }
 
-export const getTodayAttendance = async (): Promise<AttendanceRecord | null> => {
+export const getTodayAttendance = async (employeeId?: string): Promise<AttendanceRecord | null> => {
   if (MOCK_MODE) {
     return mockGetTodayAttendance()
   }
 
+  if (!employeeId) {
+    throw new Error('员工ID不能为空')
+  }
+
   try {
-    const response = await api.get<AttendanceRecord>('/attendance/today')
+    const response = await api.get<AttendanceRecord>(`/attendance/today?employeeId=${employeeId}`)
     return response.data
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -229,6 +249,7 @@ export const getTodayAttendance = async (): Promise<AttendanceRecord | null> => 
 
 // 获取打卡记录列表
 export const getAttendanceRecords = async (params?: {
+  employeeId?: string
   startDate?: string
   endDate?: string
   type?: 'week' | 'month'
@@ -238,8 +259,18 @@ export const getAttendanceRecords = async (params?: {
     return []
   }
 
+  if (!params?.employeeId) {
+    throw new Error('员工ID不能为空')
+  }
+
   try {
-    const response = await api.get<AttendanceRecord[]>('/attendance/records', { params })
+    const queryParams: any = {
+      employeeId: params.employeeId,
+    }
+    if (params.startDate) queryParams.startDate = params.startDate
+    if (params.endDate) queryParams.endDate = params.endDate
+    
+    const response = await api.get<AttendanceRecord[]>('/attendance/records', { params: queryParams })
     return response.data
   } catch (error) {
     throw error instanceof Error ? error : new Error('获取打卡记录失败')

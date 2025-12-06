@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import { getAttendanceRecords } from '../api'
 import type { AttendanceRecord } from '../types'
 import './AttendancePage.css'
 
 const AttendancePage = () => {
+  const { user } = useAuth()
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<'week' | 'month' | 'custom'>('week')
@@ -11,21 +13,38 @@ const AttendancePage = () => {
   const [endDate, setEndDate] = useState('')
 
   useEffect(() => {
-    loadRecords()
-  }, [filter])
+    if (user?.employeeId) {
+      loadRecords()
+    }
+  }, [filter, user?.employeeId])
 
   const loadRecords = async () => {
+    if (!user?.employeeId) return
+    
     setLoading(true)
     try {
-      let params: any = {}
+      const employeeId = String(user.employeeId).padStart(10, '0')
+      let params: any = {
+        employeeId: employeeId
+      }
+      
       if (filter === 'week') {
-        params.type = 'week'
+        // 本周
+        const today = new Date()
+        const weekStart = new Date(today)
+        weekStart.setDate(today.getDate() - today.getDay())
+        params.startDate = weekStart.toISOString().split('T')[0]
+        params.endDate = today.toISOString().split('T')[0]
       } else if (filter === 'month') {
-        params.type = 'month'
+        // 本月
+        const today = new Date()
+        params.startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
+        params.endDate = today.toISOString().split('T')[0]
       } else if (filter === 'custom' && startDate && endDate) {
         params.startDate = startDate
         params.endDate = endDate
       }
+      
       const data = await getAttendanceRecords(params)
       setRecords(data)
     } catch (error) {

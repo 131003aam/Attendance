@@ -1,21 +1,29 @@
 package com.attendance.management.system.service;
 
-import com.attendance.management.system.dao.EmployeeDAO;
 import com.attendance.management.system.entity.Employee;
 import com.attendance.management.system.repository.EmployeeRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+/**
+ * 员工服务类
+ */
+
 @Service
 public class EmployeeService {
 
-    @Autowired
-    private EmployeeRepository employeeRepository;
+    /** BCrypt密码前缀 */
+    private static final String BCRYPT_PREFIX = "$2a$";
 
-    @Autowired
-    private EmployeeDAO employeeDAO; // 保留用于向后兼容
+    private final EmployeeRepository employeeRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public EmployeeService(EmployeeRepository employeeRepository, PasswordEncoder passwordEncoder) {
+        this.employeeRepository = employeeRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     /**
      * 使用字符串类型的员工ID进行认证（推荐使用）
@@ -24,7 +32,16 @@ public class EmployeeService {
         Optional<Employee> employeeOpt = employeeRepository.findByEmployeeId(employeeId);
         if (employeeOpt.isPresent()) {
             Employee employee = employeeOpt.get();
-            return password.equals(employee.getPassword());
+            // 使用PasswordEncoder进行密码验证
+            // 如果密码是明文存储的（旧数据），先尝试直接比较，然后可以迁移到加密存储
+            String storedPassword = employee.getPassword();
+            if (storedPassword != null && storedPassword.startsWith(BCRYPT_PREFIX)) {
+                // BCrypt加密的密码
+                return passwordEncoder.matches(password, storedPassword);
+            } else {
+                // 明文密码（向后兼容，建议迁移到加密存储）
+                return password.equals(storedPassword);
+            }
         }
         return false;
     }
