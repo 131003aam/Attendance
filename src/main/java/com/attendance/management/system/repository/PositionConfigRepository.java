@@ -7,6 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface PositionConfigRepository extends JpaRepository<PositionConfig, Long> {
+public interface PositionConfigRepository extends JpaRepository<PositionConfig, String> {
     Optional<PositionConfig> findByPositionId(String positionId);
 }

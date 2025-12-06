@@ -23,15 +23,29 @@ public class LoginController {
             );
         }
 
-        if (employeeService.authenticate(request.getEmployeeId(), request.getPassword())) {
-            Employee employee = employeeService.getEmployeeDetails(request.getEmployeeId());
+        // 支持字符串和整数类型的员工ID
+        String employeeIdStr;
+        if (request.getEmployeeId() instanceof String) {
+            employeeIdStr = (String) request.getEmployeeId();
+        } else if (request.getEmployeeId() instanceof Integer) {
+            employeeIdStr = String.format("%010d", (Integer) request.getEmployeeId());
+        } else {
+            employeeIdStr = String.valueOf(request.getEmployeeId());
+        }
+
+        if (employeeService.authenticate(employeeIdStr, request.getPassword())) {
+            Employee employee = employeeService.getEmployeeDetails(employeeIdStr);
+            if (employee == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new LoginResponse("用户信息获取失败", false, null, null, null, null));
+            }
             LoginResponse response = new LoginResponse(
                     "登录成功",
                     true,
-                    employee.getEid(),
+                    employee.getEmployeeId(),
                     employee.getName(),
-                    employee.getDid(),
-                    employee.getPid()
+                    employee.getDepartmentId(),
+                    employee.getPositionId()
             );
             return ResponseEntity.ok(response);
         } else {
@@ -42,15 +56,15 @@ public class LoginController {
 }
 
 class LoginRequest {
-    private Integer employeeId;
+    private Object employeeId;  // 支持String或Integer类型
     private String password;
 
     // Getters and Setters
-    public Integer getEmployeeId() {
+    public Object getEmployeeId() {
         return employeeId;
     }
 
-    public void setEmployeeId(Integer employeeId) {
+    public void setEmployeeId(Object employeeId) {
         this.employeeId = employeeId;
     }
 
@@ -66,17 +80,17 @@ class LoginRequest {
 class LoginResponse {
     private String message;
     private boolean success;
-    private Integer employeeId;
+    private String employeeId;      // 改为String类型
     private String employeeName;
-    private Integer departmentId;
-    private Integer positionId;
+    private String departmentId;    // 改为String类型
+    private String positionId;      // 改为String类型
 
     public LoginResponse(String message,
                          boolean success,
-                         Integer employeeId,
+                         String employeeId,
                          String employeeName,
-                         Integer departmentId,
-                         Integer positionId) {
+                         String departmentId,
+                         String positionId) {
         this.message = message;
         this.success = success;
         this.employeeId = employeeId;
@@ -102,11 +116,11 @@ class LoginResponse {
         this.success = success;
     }
 
-    public Integer getEmployeeId() {
+    public String getEmployeeId() {
         return employeeId;
     }
 
-    public void setEmployeeId(Integer employeeId) {
+    public void setEmployeeId(String employeeId) {
         this.employeeId = employeeId;
     }
 
@@ -118,19 +132,19 @@ class LoginResponse {
         this.employeeName = employeeName;
     }
 
-    public Integer getDepartmentId() {
+    public String getDepartmentId() {
         return departmentId;
     }
 
-    public void setDepartmentId(Integer departmentId) {
+    public void setDepartmentId(String departmentId) {
         this.departmentId = departmentId;
     }
 
-    public Integer getPositionId() {
+    public String getPositionId() {
         return positionId;
     }
 
-    public void setPositionId(Integer positionId) {
+    public void setPositionId(String positionId) {
         this.positionId = positionId;
     }
 }

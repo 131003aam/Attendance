@@ -4,40 +4,49 @@ import jakarta.persistence.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "attendance_record")
 public class AttendanceRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "ID")
+    private Long id;                    // 考勤记录ID
 
-    @Column(name = "employee_id")
-    private String employeeId;
+    @Column(name = "EID", length = 10, nullable = false)
+    private String employeeId;          // 员工ID (CHAR(10))
 
-    @Column(name = "date")
-    private LocalDate date;
+    @Column(name = "NDate", nullable = false)
+    private LocalDate date;             // 打卡日期 (DATE)
 
-    @Column(name = "check_in_time")
-    private LocalDateTime checkInTime;
+    @Column(name = "NsTime")
+    private LocalTime checkInTime;      // 签到时间 (TIME)
 
-    @Column(name = "check_out_time")
-    private LocalDateTime checkOutTime;
+    @Column(name = "NeTime")
+    private LocalTime checkOutTime;     // 签退时间 (TIME)
 
-    // 记录类型，不确定是否需要
-    @Column(name = "record_type")
-     private String recordType; // NORMAL, LEAVE, OVERTIME, BUSINESS_TRIP
+    @Column(name = "record_type", length = 20)
+    private String recordType;          // 记录类型 (VARCHAR(20))
 
-
-    @Column(name = "status")
-    private String status; // NORMAL, LATE, EARLY_LEAVE, ABSENT
+    @Column(name = "NStatus", length = 10)
+    private String status;              // 考勤状态 (VARCHAR(10))
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 
     // Constructors
@@ -68,19 +77,19 @@ public class AttendanceRecord {
         this.date = date;
     }
 
-    public LocalDateTime getCheckInTime() {
+    public LocalTime getCheckInTime() {
         return checkInTime;
     }
 
-    public void setCheckInTime(LocalDateTime checkInTime) {
+    public void setCheckInTime(LocalTime checkInTime) {
         this.checkInTime = checkInTime;
     }
 
-    public LocalDateTime getCheckOutTime() {
+    public LocalTime getCheckOutTime() {
         return checkOutTime;
     }
 
-    public void setCheckOutTime(LocalDateTime checkOutTime) {
+    public void setCheckOutTime(LocalTime checkOutTime) {
         this.checkOutTime = checkOutTime;
     }
 
@@ -106,5 +115,34 @@ public class AttendanceRecord {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    // 兼容方法：用于处理前端可能传递的LocalDateTime
+    public void setCheckInTimeAsDateTime(LocalDateTime dateTime) {
+        this.checkInTime = dateTime != null ? dateTime.toLocalTime() : null;
+    }
+
+    public void setCheckOutTimeAsDateTime(LocalDateTime dateTime) {
+        this.checkOutTime = dateTime != null ? dateTime.toLocalTime() : null;
+    }
+
+    public LocalDateTime getCheckInTimeAsDateTime() {
+        return checkInTime != null && date != null 
+            ? LocalDateTime.of(date, checkInTime) 
+            : null;
+    }
+
+    public LocalDateTime getCheckOutTimeAsDateTime() {
+        return checkOutTime != null && date != null 
+            ? LocalDateTime.of(date, checkOutTime) 
+            : null;
     }
 }

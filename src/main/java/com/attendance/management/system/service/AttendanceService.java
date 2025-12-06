@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -62,14 +61,14 @@ public class AttendanceService {
         }
 
         // 设置上班打卡时间
-        record.setCheckInTime(LocalDateTime.now());
+        record.setCheckInTime(now);
 
         // 根据职务配置判断是否迟到
         LocalTime standardStartTime = positionConfig.getWorkStartTime();
         if (standardStartTime != null && now.isAfter(standardStartTime.plusMinutes(30))) {
-            record.setStatus("LATE"); // 迟到
+            record.setStatus("迟到"); // 迟到
         } else {
-            record.setStatus("NORMAL"); // 正常
+            record.setStatus("正常"); // 正常
         }
 
         return attendanceRecordRepository.save(record);
@@ -102,20 +101,20 @@ public class AttendanceService {
                 .orElseThrow(() -> new RuntimeException("未找到该职务的配置信息"));
 
         // 设置下班打卡时间
-        record.setCheckOutTime(LocalDateTime.now());
+        record.setCheckOutTime(now);
 
         // 根据职务配置判断是否早退
         LocalTime standardEndTime = positionConfig.getWorkEndTime();
         if (standardEndTime != null && now.isBefore(standardEndTime.minusMinutes(30))) {
             // 如果当前状态不是迟到，则标记为早退
-            if (!"LATE".equals(record.getStatus())) {
-                record.setStatus("EARLY_LEAVE"); // 早退
+            if (!"迟到".equals(record.getStatus())) {
+                record.setStatus("早退"); // 早退
             }
             // 如果已经是迟到状态，则保持迟到状态
         } else {
             // 如果当前状态不是迟到，则标记为正常
-            if (!"LATE".equals(record.getStatus())) {
-                record.setStatus("NORMAL"); // 正常
+            if (!"迟到".equals(record.getStatus())) {
+                record.setStatus("正常"); // 正常
             }
             // 如果已经是迟到状态，则保持迟到状态
         }

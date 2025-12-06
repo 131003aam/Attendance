@@ -4,10 +4,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-<<<<<<< Updated upstream
-=======
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
->>>>>>> Stashed changes
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -19,13 +17,10 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())  // 禁用 CSRF 以允许 POST 请求
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/login").permitAll()
-<<<<<<< Updated upstream
-=======
                 .requestMatchers("/api/register").permitAll()  // 注册接口
                 .requestMatchers("/api/init-admin").permitAll() //测试接口
                 .requestMatchers("/api/attendance/**").permitAll()  // 放行所有考勤相关接口
                 .requestMatchers("/api/positions/**").permitAll()   // 放行职务配置相关接口
->>>>>>> Stashed changes
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")  // 管理员专用接口
                 .requestMatchers("/api/employee/**").hasAnyRole("EMPLOYEE", "ADMIN")  // 员工接口
                 .anyRequest().authenticated()
@@ -33,4 +28,8 @@ public class SecurityConfig {
         return http.build();
     }
 
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 }
