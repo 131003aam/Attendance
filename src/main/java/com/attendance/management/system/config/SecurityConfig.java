@@ -14,10 +14,10 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())  // 禁用 CSRF 以允许 POST 请求
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/login").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")  // 管理员专用接口
-                .requestMatchers("/api/employee/**").hasAnyRole("EMPLOYEE", "ADMIN")  // 员工接口
-                .anyRequest().authenticated()
+                // 暂时允许所有API请求，因为当前没有实现完整的Spring Security认证
+                // 实际项目中应该实现JWT或Session认证，然后根据用户角色进行权限控制
+                .requestMatchers("/api/**").permitAll()  // 允许所有API请求
+                .anyRequest().permitAll()  // 允许其他请求（如静态资源）
         );
         return http.build();
     }

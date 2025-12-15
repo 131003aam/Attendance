@@ -8,7 +8,7 @@ interface LayoutProps {
 }
 
 const Layout = ({ children }: LayoutProps) => {
-  const { user, isAdmin, logout } = useAuth()
+  const { user, isAdmin, isApprover, isEmployee, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -17,21 +17,41 @@ const Layout = ({ children }: LayoutProps) => {
     navigate('/login')
   }
 
+  // 员工菜单
   const employeeMenuItems = [
     { path: '/home', label: '首页' },
-    { path: '/attendance', label: '打卡记录' },
     { path: '/statistics', label: '统计汇总' },
     { path: '/applications', label: '我的申请' },
     { path: '/profile', label: '个人中心' },
   ]
 
-  const adminMenuItems = [
-    { path: '/admin/employees', label: '员工管理' },
-    { path: '/admin/attendance', label: '打卡汇总' },
-    { path: '/admin/applications', label: '审批管理' },
+  // 审批人菜单
+  const approverMenuItems = [
+    { path: '/home', label: '首页' },
+    { path: '/approval', label: '审批中心' },
+    { path: '/profile', label: '个人中心' },
   ]
 
-  const menuItems = isAdmin ? adminMenuItems : employeeMenuItems
+  // 管理员菜单
+  const adminMenuItems = [
+    { path: '/home', label: '首页' },
+    { path: '/admin/employees', label: '员工管理' },
+    { path: '/admin/departments', label: '部门管理' },
+    { path: '/admin/positions', label: '职务管理' },
+    { path: '/admin/attendance', label: '考勤汇总' },
+    { path: '/admin/applications', label: '审批管理' },
+    { path: '/profile', label: '个人中心' },
+  ]
+
+  // 根据角色决定显示哪个菜单
+  let menuItems = employeeMenuItems
+  if (isAdmin) {
+    menuItems = adminMenuItems
+  } else if (isApprover) {
+    menuItems = approverMenuItems
+  } else if (isEmployee) {
+    menuItems = employeeMenuItems
+  }
 
   return (
     <div className="layout">

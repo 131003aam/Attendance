@@ -1,6 +1,7 @@
 .statistics-page {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+  padding: 24px;
 }
 
 .statistics-page h1 {
@@ -9,10 +10,17 @@
   color: #ffffff;
 }
 
+.statistics-page h2 {
+  font-size: 20px;
+  margin: 32px 0 16px 0;
+  color: #ffffff;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 24px;
+  margin-bottom: 32px;
 }
 
 .stat-card {
@@ -21,6 +29,12 @@
   border-radius: 16px;
   padding: 24px;
   text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .stat-label {
@@ -39,10 +53,352 @@
   color: #ff9800;
 }
 
+.stat-value.error {
+  color: #f44336;
+}
+
+.stat-value.success {
+  color: #4caf50;
+}
+
+/* 管理员筛选区域 */
+.admin-filter-section {
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.filter-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-item label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.filter-item select {
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 14px;
+  min-width: 150px;
+}
+
+.filter-item select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 汇总区域 */
+.summary-section {
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #1a1a1a;
+  border-radius: 8px;
+}
+
+.summary-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.summary-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.summary-value.success {
+  color: #4caf50;
+}
+
+.summary-value.warning {
+  color: #ff9800;
+}
+
+.summary-value.error {
+  color: #f44336;
+}
+
+/* 筛选区域 */
+.filter-section {
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.filter-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.date-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.date-inputs input[type="date"] {
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.date-inputs span {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.status-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-filter label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.status-filter select {
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 14px;
+  min-width: 150px;
+}
+
+.button-group {
+  display: flex;
+  gap: 12px;
+}
+
+.query-btn,
+.reset-btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.query-btn {
+  background: #4caf50;
+  color: #ffffff;
+}
+
+.query-btn:hover {
+  background: #45a049;
+}
+
+.reset-btn {
+  background: #666;
+  color: #ffffff;
+}
+
+.reset-btn:hover {
+  background: #777;
+}
+
+/* 状态日期区域 */
+.status-dates-section {
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.status-dates-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.status-date-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.status-title.normal {
+  color: #4caf50;
+}
+
+.status-title.late {
+  color: #ff9800;
+}
+
+.status-title.early-leave {
+  color: #ff9800;
+}
+
+.status-title.missing {
+  color: #f44336;
+}
+
+.date-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.date-tag {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.date-tag.normal {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.date-tag.late {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.date-tag.early-leave {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.date-tag.missing {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.no-data {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  padding: 6px 12px;
+}
+
+/* 记录表格区域 */
+.records-section {
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.records-table {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+
+.records-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.records-table th,
+.records-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.records-table th {
+  background: #1a1a1a;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.records-table td {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+}
+
+.records-table tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge.normal {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+}
+
+.status-badge.late {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+}
+
+.status-badge.early_leave {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+}
+
+.status-badge.missing {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
 .loading,
 .empty-state {
   text-align: center;
   padding: 48px;
   color: rgba(255, 255, 255, 0.6);
 }
-

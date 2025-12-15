@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getApplications } from '../api'
+import { getApplications, cancelApplication } from '../api'
 import type { Application } from '../types'
 import './ApplicationsPage.css'
 
@@ -32,8 +32,23 @@ const ApplicationsPage = () => {
         return '加班'
       case 'BUSINESS_TRIP':
         return '出差'
+      case 'REISSUE':
+        return '补卡'
       default:
         return type
+    }
+  }
+
+  const handleCancel = async (id: number) => {
+    if (!window.confirm('确定要撤销该申请吗？')) {
+      return
+    }
+    try {
+      await cancelApplication(id)
+      await loadApplications()
+    } catch (error) {
+      console.error('撤销申请失败:', error)
+      alert(error instanceof Error ? error.message : '撤销申请失败')
     }
   }
 
@@ -106,6 +121,19 @@ const ApplicationsPage = () => {
                     <span className="item-value error">{app.rejectReason}</span>
                   </div>
                 )}
+              </div>
+              <div className="application-actions">
+                {app.status === 'PENDING' && (
+                  <button
+                    className="cancel-btn"
+                    onClick={() => handleCancel(app.id)}
+                  >
+                    撤销申请
+                  </button>
+                )}
+                <Link to={`/applications/${app.id}`} className="detail-btn">
+                  查看详情
+                </Link>
               </div>
             </div>
           ))}

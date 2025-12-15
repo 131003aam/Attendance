@@ -5,8 +5,11 @@ interface AuthContextType {
   user: UserInfo | null
   isAuthenticated: boolean
   isAdmin: boolean
+  isApprover: boolean
+  isEmployee: boolean
   login: (userInfo: UserInfo) => void
   logout: () => void
+  updateUser: (updates: Partial<UserInfo>) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -39,14 +42,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('user')
   }
 
+  const updateUser = (updates: Partial<UserInfo>) => {
+    if (user) {
+      setUser({ ...user, ...updates })
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated: !!user,
         isAdmin: user?.role === 'ADMIN',
+        isApprover: user?.role === 'APPROVER',
+        isEmployee: user?.role === 'EMPLOYEE',
         login,
         logout,
+        updateUser,
       }}
     >
       {children}

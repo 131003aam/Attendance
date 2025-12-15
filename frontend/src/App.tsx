@@ -7,7 +7,6 @@ import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import HomePage from './pages/HomePage'
-import AttendancePage from './pages/AttendancePage'
 import StatisticsPage from './pages/StatisticsPage'
 import ProfilePage from './pages/ProfilePage'
 import ApplicationsPage from './pages/ApplicationsPage'
@@ -17,6 +16,11 @@ import ApplicationFormPage from './pages/ApplicationFormPage'
 import AdminEmployeesPage from './pages/admin/AdminEmployeesPage'
 import AdminAttendancePage from './pages/admin/AdminAttendancePage'
 import AdminApplicationsPage from './pages/admin/AdminApplicationsPage'
+import AdminDepartmentsPage from './pages/admin/AdminDepartmentsPage'
+import AdminPositionsPage from './pages/admin/AdminPositionsPage'
+
+// 审批人页面
+import ApprovalPage from './pages/ApprovalPage'
 
 function App() {
   return (
@@ -39,16 +43,6 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <HomePage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/attendance"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <AttendancePage />
                 </Layout>
               </ProtectedRoute>
             }
@@ -119,6 +113,37 @@ function App() {
               <ProtectedRoute requireAdmin>
                 <Layout>
                   <AdminApplicationsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/departments"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Layout>
+                  <AdminDepartmentsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/positions"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Layout>
+                  <AdminPositionsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          {/* 审批人路由 */}
+          <Route
+            path="/approval"
+            element={
+              <ProtectedRoute requireApprover>
+                <Layout>
+                  <ApprovalPage />
                 </Layout>
               </ProtectedRoute>
             }

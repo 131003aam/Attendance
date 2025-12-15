@@ -54,7 +54,7 @@ const AdminApplicationsPage = () => {
             <tbody>
               {applications.map((app) => (
                 <tr key={app.id}>
-                  <td>{app.employeeName || `员工 ${app.employeeId}`}</td>
+                  <td>员工 {app.employeeId}</td>
                   <td>
                     {app.type === 'LEAVE'
                       ? '请假'

@@ -90,13 +90,23 @@ const LoginPage = () => {
         })
         
         // 保存用户信息到 AuthContext
+        // 根据后端返回的role设置用户角色，默认为EMPLOYEE
+        let userRole: 'EMPLOYEE' | 'APPROVER' | 'ADMIN' = 'EMPLOYEE'
+        if (response.role === 'ADMIN' || response.role === 'ROLE_ADMIN') {
+          userRole = 'ADMIN'
+        } else if (response.role === 'APPROVER' || response.role === 'ROLE_APPROVER') {
+          userRole = 'APPROVER'
+        } else {
+          userRole = 'EMPLOYEE'
+        }
+        
         authLogin({
           employeeId: response.employeeId,
           name: response.employeeName ?? '',
           phone: '',
           departmentId: response.departmentId ?? 0,
           positionId: response.positionId ?? 0,
-          role: (response.role === 'ADMIN' ? 'ADMIN' : 'EMPLOYEE') as 'ADMIN' | 'EMPLOYEE',
+          role: userRole,
         })
         
         // 跳转到首页

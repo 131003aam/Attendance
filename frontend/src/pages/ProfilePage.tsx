@@ -1,9 +1,10 @@
 import { useState, FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { updatePassword, updatePhone } from '../api'
 import './ProfilePage.css'
 
 const ProfilePage = () => {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const [phone, setPhone] = useState(user?.phone || '')
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -13,13 +14,28 @@ const ProfilePage = () => {
 
   const handleUpdatePhone = async (e: FormEvent) => {
     e.preventDefault()
+    if (!user?.employeeId) {
+      setMessage('用户信息不完整')
+      return
+    }
+
+    if (!phone || phone.length !== 11) {
+      setMessage('请输入正确的11位手机号')
+      return
+    }
+
     setLoading(true)
     setMessage('')
-    // TODO: 调用更新手机号接口
-    setTimeout(() => {
+    try {
+      await updatePhone(user.employeeId, phone)
       setMessage('手机号更新成功')
+      // 更新用户上下文中的手机号
+      updateUser({ phone })
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '更新手机号失败')
+    } finally {
       setLoading(false)
-    }, 500)
+    }
   }
 
   const handleUpdatePassword = async (e: FormEvent) => {
@@ -41,15 +57,29 @@ const ProfilePage = () => {
       return
     }
 
+    if (!user?.employeeId) {
+      setMessage('用户信息不完整')
+      return
+    }
+
     setLoading(true)
-    // TODO: 调用更新密码接口
-    setTimeout(() => {
+    try {
+      await updatePassword(user.employeeId, oldPassword, newPassword)
       setMessage('密码更新成功')
       setOldPassword('')
       setNewPassword('')
       setConfirmPassword('')
+    } catch (error) {
+      // 检查是否是原密码错误
+      const errorMessage = error instanceof Error ? error.message : '更新密码失败'
+      if (errorMessage.includes('原密码') || errorMessage.includes('原密码错误') || errorMessage.includes('原密码不对')) {
+        setMessage('原密码不对，请重新输入')
+      } else {
+        setMessage(errorMessage)
+      }
+    } finally {
       setLoading(false)
-    }, 500)
+    }
   }
 
   return (
