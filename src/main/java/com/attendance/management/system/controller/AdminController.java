@@ -1,11 +1,13 @@
 package com.attendance.management.system.controller;
 
+import com.attendance.management.system.entity.Application;
 import com.attendance.management.system.entity.Department;
 import com.attendance.management.system.entity.Employee;
 import com.attendance.management.system.entity.PositionConfig;
 import com.attendance.management.system.service.DepartmentService;
 import com.attendance.management.system.service.EmployeeService;
 import com.attendance.management.system.service.PositionConfigService;
+import com.attendance.management.system.service.ApplicationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 
 @RestController
 @RequestMapping("/api/admin")
@@ -31,6 +34,9 @@ public class AdminController {
 
     @Autowired
     private EmployeeService employeeService;
+
+    @Autowired
+    private ApplicationService applicationService;
 
     // ========== 员工管理 ==========
     @GetMapping("/employees")
@@ -510,14 +516,23 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> approveApplication(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request) {
+        // 从数据库查询实际的申请记录
+        Application applicationRecord = applicationService.getApplicationById(id.intValue());
+
+        // 如果是补卡申请且审批通过，需要更新考勤记录
+        boolean approved = (Boolean) request.getOrDefault("approved", false);
+        if (approved && "REISSUE".equals(applicationRecord.getApplicationType())) {
+            // 调用服务更新考勤记录
+            applicationService.processReissueApproval(applicationRecord);
+        }
         Map<String, Object> application = new HashMap<>();
         application.put("id", id);
-        application.put("employeeId", 10002);
-        application.put("type", "LEAVE");
-        application.put("startTime", "");
-        application.put("endTime", "");
-        application.put("reason", "");
-        application.put("status", (Boolean) request.getOrDefault("approved", false) ? "APPROVED" : "REJECTED");
+        application.put("employeeId", applicationRecord.getEid());
+        application.put("type", applicationRecord.getApplicationType());
+        application.put("startTime", applicationRecord.getStartTime());
+        application.put("endTime", applicationRecord.getEndTime());
+        application.put("reason", applicationRecord.getReason());
+        application.put("status", approved ? "APPROVED" : "REJECTED");
         return ResponseEntity.ok(application);
     }
 }

@@ -1,6 +1,9 @@
 package com.attendance.management.system.controller;
 
+import com.attendance.management.system.dao.ApplicationDAO;
+import com.attendance.management.system.dao.AttendanceRecordDAO;
 import com.attendance.management.system.entity.Application;
+import com.attendance.management.system.entity.AttendanceRecord;
 import com.attendance.management.system.service.ApplicationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -21,6 +25,12 @@ public class ApplicationController {
 
     @Autowired
     private ApplicationService applicationService;
+
+    @Autowired
+    private AttendanceRecordDAO attendanceRecordDAO;
+
+    @Autowired
+    private ApplicationDAO applicationDAO;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
@@ -212,6 +222,22 @@ public class ApplicationController {
         }
     }
 
+    private Integer getEmployeeIdFromRequest(Map<String, Object> request) {
+        Object employeeIdObj = request.get("employeeId");
+        if (employeeIdObj instanceof Number) {
+            return ((Number) employeeIdObj).intValue();
+        } else if (employeeIdObj instanceof String) {
+            try {
+                return Integer.parseInt((String) employeeIdObj);
+            } catch (NumberFormatException e) {
+                return 10002; // 默认值
+            }
+        } else {
+            return 10002; // 默认值
+        }
+    }
+
+
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> getApplications(
             @RequestParam(required = false) Integer employeeId,
@@ -246,6 +272,79 @@ public class ApplicationController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> submitApplication(@RequestBody Map<String, Object> request) {
         try {
+            // 获取申请类型和员工ID
+            String type = (String) request.get("type");
+            Integer employeeId = getEmployeeIdFromRequest(request);
+
+            // 补卡申请特殊验证
+            if ("REISSUE".equals(type)) {
+                String reissueTimeStr = (String) request.get("reissueTime");
+                if (reissueTimeStr != null) {
+                    LocalDateTime reissueTime = parseDateTime(reissueTimeStr);
+                    LocalDate reissueDate = reissueTime.toLocalDate();
+
+                    // 验证1: 补卡日期不能与正常考勤日期相同
+                    AttendanceRecord existingRecord = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, reissueDate);
+                    if (existingRecord != null && existingRecord.getCheckInTime() != null) {
+                        Map<String, Object> error = new HashMap<>();
+                        error.put("message", "该日期已有正常考勤记录，不能提交补卡申请");
+                        error.put("success", false);
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                    }
+
+                    // 验证2: 同一天不能重复提交补卡申请
+                    List<Application> existingReissues = applicationDAO.findByEmployeeId(employeeId);
+                    boolean hasDuplicate = existingReissues.stream()
+                            .filter(app -> "REISSUE".equals(app.getApplicationType()))
+                            .filter(app -> "PENDING".equals(app.getStatus()) || "APPROVED".equals(app.getStatus()))
+                            .anyMatch(app -> {
+                                if (app.getReissueTime() != null) {
+                                    LocalDate existingDate = app.getReissueTime().toLocalDate();
+                                    return existingDate.equals(reissueDate);
+                                }
+                                return false;
+                            });
+
+                    if (hasDuplicate) {
+                        Map<String, Object> error = new HashMap<>();
+                        error.put("message", "该日期的补卡申请已存在，不能重复提交");
+                        error.put("success", false);
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                    }
+                }
+            } else {
+                // 其他类型申请验证（请假、加班、出差）
+                String startTimeStr = (String) request.get("startTime");
+                String endTimeStr = (String) request.get("endTime");
+
+                if (startTimeStr != null && endTimeStr != null) {
+                    LocalDateTime startTime = parseDateTime(startTimeStr);
+                    LocalDateTime endTime = parseDateTime(endTimeStr);
+
+                    // 验证: 时间段重叠检查
+                    if (startTime != null && endTime != null && !startTime.isAfter(endTime)) {
+                        List<Application> existingApplications = applicationDAO.findByEmployeeId(employeeId);
+                        boolean hasOverlap = existingApplications.stream()
+                                .filter(app -> !type.equals(app.getApplicationType()) ||
+                                        ("PENDING".equals(app.getStatus()) || "APPROVED".equals(app.getStatus())))
+                                .anyMatch(app -> {
+                                    if (app.getStartTime() != null && app.getEndTime() != null) {
+                                        // 检查时间段是否重叠
+                                        return !(endTime.isBefore(app.getStartTime()) || startTime.isAfter(app.getEndTime()));
+                                    }
+                                    return false;
+                                });
+
+                        if (hasOverlap) {
+                            Map<String, Object> error = new HashMap<>();
+                            error.put("message", "申请时间段与其他申请重叠，不能重复提交");
+                            error.put("success", false);
+                            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                        }
+                    }
+                }
+            }
+
             Application application = mapToApplication(request);
             Application saved = applicationService.submitApplication(application);
             Map<String, Object> result = applicationToMap(saved);
@@ -258,6 +357,7 @@ public class ApplicationController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
+
 
     @PostMapping("/{id}/cancel")
     public ResponseEntity<Map<String, Object>> cancelApplication(@PathVariable Integer id) {

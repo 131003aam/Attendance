@@ -148,7 +148,8 @@ class ApplicationRowMapper implements RowMapper<Application> {
         }
         
         Timestamp endTime = rs.getTimestamp("EndTime");
-        if (endTime != null) {
+
+ if (endTime != null) {
             application.setEndTime(endTime.toLocalDateTime());
         }
         
@@ -198,4 +199,3 @@ class ApplicationRowMapper implements RowMapper<Application> {
         return application;
     }
 }
-

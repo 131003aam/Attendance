@@ -1,13 +1,20 @@
 package com.attendance.management.system.service;
 
 import com.attendance.management.system.dao.ApplicationDAO;
+import com.attendance.management.system.dao.AttendanceRecordDAO;
 import com.attendance.management.system.dao.EmployeeDAO;
+import com.attendance.management.system.dao.PositionConfigDAO;
 import com.attendance.management.system.entity.Application;
+import com.attendance.management.system.entity.AttendanceRecord;
 import com.attendance.management.system.entity.Employee;
+import com.attendance.management.system.entity.PositionConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -18,6 +25,12 @@ public class ApplicationService {
 
     @Autowired
     private EmployeeDAO employeeDAO;
+
+    @Autowired
+    private AttendanceRecordDAO attendanceRecordDAO;
+
+    @Autowired
+    private PositionConfigDAO positionConfigDAO;
 
     public Application getApplicationById(Integer aid) {
         return applicationDAO.findById(aid);
@@ -114,5 +127,83 @@ public class ApplicationService {
         
         return (int) count;
     }
+
+    public void processReissueApproval(Application reissueApplication) {
+        // 获取员工ID和补卡时间
+        Integer employeeId = reissueApplication.getEid();
+        LocalDateTime reissueTime = reissueApplication.getReissueTime();
+
+        if (employeeId != null && reissueTime != null) {
+            // 查询对应的考勤记录
+            LocalDate recordDate = reissueTime.toLocalDate();
+            AttendanceRecord attendanceRecord = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, recordDate);
+
+            if (attendanceRecord != null) {
+                // 根据补卡类型更新考勤记录
+                String reissueType = reissueApplication.getReissueType();
+                if ("MISSING_CHECK_IN".equals(reissueType)) {
+                    // 补上班卡
+                    attendanceRecord.setCheckInTime(reissueTime);
+                } else if ("MISSING_CHECK_OUT".equals(reissueType)) {
+                    // 补下班卡
+                    attendanceRecord.setCheckOutTime(reissueTime);
+                } else if ("BOTH".equals(reissueType)) {
+                    // 补全天卡
+                    attendanceRecord.setCheckInTime(reissueTime);
+                    attendanceRecord.setCheckOutTime(reissueTime);
+                }
+
+                // 更新考勤状态和工作时长
+                updateAttendanceStatusAndWorkHours(attendanceRecord);
+
+                // 保存更新后的考勤记录
+                attendanceRecordDAO.update(attendanceRecord);
+            }
+        }
+    }
+    private void updateAttendanceStatusAndWorkHours(AttendanceRecord record) {
+        // 根据当前职务配置重新计算考勤状态
+        Employee employee = employeeDAO.findByEmployeeId(record.getEid());
+        if (employee != null && employee.getPid() != null) {
+            PositionConfig positionConfig = positionConfigDAO.findById(employee.getPid().trim());
+            if (positionConfig != null && record.getCheckInTime() != null) {
+                // 重新判断是否迟到
+                LocalTime workStartTime = positionConfig.getWorkStartTime().toLocalTime();
+                LocalTime checkInTime = record.getCheckInTime().toLocalTime();
+
+                String newStatus = "NORMAL";
+                if (checkInTime.isAfter(workStartTime)) {
+                    newStatus = "LATE";
+                }
+
+                // 如果已下班打卡，判断是否早退
+                if (record.getCheckOutTime() != null) {
+                    LocalTime workEndTime = positionConfig.getWorkEndTime().toLocalTime();
+                    LocalTime checkOutTime = record.getCheckOutTime().toLocalTime();
+
+                    if (checkOutTime.isBefore(workEndTime)) {
+                        if ("LATE".equals(newStatus)) {
+                            // 既迟到又早退，保持LATE状态
+                        } else {
+                            newStatus = "EARLY_LEAVE";
+                        }
+                    }
+                }
+
+                // 更新状态
+                record.setStatus(newStatus);
+            }
+        }
+
+        // 计算工作时长
+        if (record.getCheckInTime() != null && record.getCheckOutTime() != null) {
+            long minutes = java.time.Duration.between(
+                    record.getCheckInTime().toLocalTime(),
+                    record.getCheckOutTime().toLocalTime()
+            ).toMinutes();
+            record.setWorkHours(BigDecimal.valueOf(minutes / 60.0));
+        }
+    }
+
 }
 
