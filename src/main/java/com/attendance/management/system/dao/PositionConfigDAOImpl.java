@@ -4,11 +4,11 @@ import com.attendance.management.system.entity.PositionConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Time;
 import java.util.List;
 
 @Repository
@@ -35,7 +35,7 @@ public class PositionConfigDAOImpl implements PositionConfigDAO {
         // 但为了确保匹配，我们使用TRIM函数比较
         try {
             String sql = "SELECT * FROM position_config WHERE TRIM(PID) = ?";
-            PositionConfig result = jdbcTemplate.queryForObject(sql, new Object[]{trimmedPid}, new PositionConfigRowMapper());
+            PositionConfig result = jdbcTemplate.queryForObject(sql, new PositionConfigRowMapper(), trimmedPid);
             System.out.println("PositionConfigDAO找到配置: " + (result != null ? result.getPName() : "null"));
             return result;
         } catch (org.springframework.dao.EmptyResultDataAccessException e) {
@@ -43,7 +43,7 @@ public class PositionConfigDAOImpl implements PositionConfigDAO {
             // 如果TRIM方式找不到，尝试直接等号匹配（MySQL会自动处理CHAR类型的空格）
             try {
                 String sql = "SELECT * FROM position_config WHERE PID = ?";
-                PositionConfig result = jdbcTemplate.queryForObject(sql, new Object[]{trimmedPid}, new PositionConfigRowMapper());
+                PositionConfig result = jdbcTemplate.queryForObject(sql, new PositionConfigRowMapper(), trimmedPid);
                 System.out.println("PositionConfigDAO找到配置（直接匹配）: " + (result != null ? result.getPName() : "null"));
                 return result;
             } catch (org.springframework.dao.EmptyResultDataAccessException e2) {
@@ -104,7 +104,7 @@ public class PositionConfigDAOImpl implements PositionConfigDAO {
 
 class PositionConfigRowMapper implements RowMapper<PositionConfig> {
     @Override
-    public PositionConfig mapRow(ResultSet rs, int rowNum) throws SQLException {
+    public PositionConfig mapRow(@NonNull ResultSet rs, int rowNum) throws SQLException {
         PositionConfig positionConfig = new PositionConfig();
         String pid = rs.getString("PID");
         positionConfig.setPid(pid != null ? pid.trim() : null);

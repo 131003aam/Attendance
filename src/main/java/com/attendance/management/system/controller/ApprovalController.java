@@ -1,6 +1,5 @@
 package com.attendance.management.system.controller;
 
-import com.attendance.management.system.controller.ApplicationController;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

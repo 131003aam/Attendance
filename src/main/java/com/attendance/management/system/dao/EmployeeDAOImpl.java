@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
@@ -21,7 +22,7 @@ public class EmployeeDAOImpl implements EmployeeDAO {
     public Employee findByEmployeeId(int employeeId) {
         String sql = "SELECT * FROM employee WHERE EID = ?";
         try {
-            return jdbcTemplate.queryForObject(sql, new Object[]{employeeId}, new EmployeeRowMapper());
+            return jdbcTemplate.queryForObject(sql, new EmployeeRowMapper(), employeeId);
         } catch (EmptyResultDataAccessException e) {
             return null;
         }
@@ -80,7 +81,7 @@ public class EmployeeDAOImpl implements EmployeeDAO {
 
 class EmployeeRowMapper implements RowMapper<Employee> {
     @Override
-    public Employee mapRow(ResultSet rs, int rowNum) throws SQLException {
+    public Employee mapRow(@NonNull ResultSet rs, int rowNum) throws SQLException {
         Employee employee = new Employee();
         employee.setEid(rs.getInt("EID"));
         // DID和PID现在是CHAR(10)类型，直接使用字符串

@@ -4,6 +4,7 @@ import com.attendance.management.system.entity.Department;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
@@ -26,7 +27,7 @@ public class DepartmentDAOImpl implements DepartmentDAO {
     public Department findById(String did) {
         String sql = "SELECT * FROM department WHERE DID = ?";
         try {
-            return jdbcTemplate.queryForObject(sql, new Object[]{did}, new DepartmentRowMapper());
+            return jdbcTemplate.queryForObject(sql, new DepartmentRowMapper(), did);
         } catch (org.springframework.dao.EmptyResultDataAccessException e) {
             return null;
         }
@@ -61,7 +62,7 @@ public class DepartmentDAOImpl implements DepartmentDAO {
 
 class DepartmentRowMapper implements RowMapper<Department> {
     @Override
-    public Department mapRow(ResultSet rs, int rowNum) throws SQLException {
+    public Department mapRow(@NonNull ResultSet rs, int rowNum) throws SQLException {
         Department department = new Department();
         department.setDid(rs.getString("DID"));
         department.setDName(rs.getString("DName"));

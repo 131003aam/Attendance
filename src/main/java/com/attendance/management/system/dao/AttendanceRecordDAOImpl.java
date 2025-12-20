@@ -4,13 +4,13 @@ import com.attendance.management.system.entity.AttendanceRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -23,7 +23,7 @@ public class AttendanceRecordDAOImpl implements AttendanceRecordDAO {
     public AttendanceRecord findByEmployeeIdAndDate(Integer eid, LocalDate date) {
         String sql = "SELECT * FROM attendance_record WHERE EID = ? AND RecordDate = ?";
         try {
-            return jdbcTemplate.queryForObject(sql, new Object[]{eid, date}, new AttendanceRecordRowMapper());
+            return jdbcTemplate.queryForObject(sql, new AttendanceRecordRowMapper(), eid, date);
         } catch (org.springframework.dao.EmptyResultDataAccessException e) {
             return null;
         }
@@ -59,19 +59,19 @@ public class AttendanceRecordDAOImpl implements AttendanceRecordDAO {
     @Override
     public List<AttendanceRecord> findByEmployeeId(Integer eid) {
         String sql = "SELECT * FROM attendance_record WHERE EID = ? ORDER BY RecordDate DESC";
-        return jdbcTemplate.query(sql, new Object[]{eid}, new AttendanceRecordRowMapper());
+        return jdbcTemplate.query(sql, new AttendanceRecordRowMapper(), eid);
     }
 
     @Override
     public List<AttendanceRecord> findByEmployeeIdAndDateRange(Integer eid, LocalDate startDate, LocalDate endDate) {
         String sql = "SELECT * FROM attendance_record WHERE EID = ? AND RecordDate BETWEEN ? AND ? ORDER BY RecordDate DESC";
-        return jdbcTemplate.query(sql, new Object[]{eid, startDate, endDate}, new AttendanceRecordRowMapper());
+        return jdbcTemplate.query(sql, new AttendanceRecordRowMapper(), eid, startDate, endDate);
     }
 
     @Override
     public List<AttendanceRecord> findByEmployeeIdAndDateRangeAndStatus(Integer eid, LocalDate startDate, LocalDate endDate, String status) {
         String sql = "SELECT * FROM attendance_record WHERE EID = ? AND RecordDate BETWEEN ? AND ? AND Status = ? ORDER BY RecordDate DESC";
-        return jdbcTemplate.query(sql, new Object[]{eid, startDate, endDate, status}, new AttendanceRecordRowMapper());
+        return jdbcTemplate.query(sql, new AttendanceRecordRowMapper(), eid, startDate, endDate, status);
     }
 
     @Override
@@ -81,7 +81,7 @@ public class AttendanceRecordDAOImpl implements AttendanceRecordDAO {
                      "WHERE e.DID = ? AND ar.RecordDate BETWEEN ? AND ? " +
                      "ORDER BY ar.RecordDate DESC";
         String did = String.format("D%09d", departmentId);
-        return jdbcTemplate.query(sql, new Object[]{did, startDate, endDate}, new AttendanceRecordRowMapper());
+        return jdbcTemplate.query(sql, new AttendanceRecordRowMapper(), did, startDate, endDate);
     }
 
     @Override
@@ -91,19 +91,19 @@ public class AttendanceRecordDAOImpl implements AttendanceRecordDAO {
                      "WHERE e.DID = ? AND ar.RecordDate BETWEEN ? AND ? AND ar.Status = ? " +
                      "ORDER BY ar.RecordDate DESC";
         String did = String.format("D%09d", departmentId);
-        return jdbcTemplate.query(sql, new Object[]{did, startDate, endDate, status}, new AttendanceRecordRowMapper());
+        return jdbcTemplate.query(sql, new AttendanceRecordRowMapper(), did, startDate, endDate, status);
     }
 
     @Override
     public List<AttendanceRecord> findAllByDateRange(LocalDate startDate, LocalDate endDate) {
         String sql = "SELECT * FROM attendance_record WHERE RecordDate BETWEEN ? AND ? ORDER BY RecordDate DESC";
-        return jdbcTemplate.query(sql, new Object[]{startDate, endDate}, new AttendanceRecordRowMapper());
+        return jdbcTemplate.query(sql, new AttendanceRecordRowMapper(), startDate, endDate);
     }
 
     @Override
     public List<AttendanceRecord> findAllByDateRangeAndStatus(LocalDate startDate, LocalDate endDate, String status) {
         String sql = "SELECT * FROM attendance_record WHERE RecordDate BETWEEN ? AND ? AND Status = ? ORDER BY RecordDate DESC";
-        return jdbcTemplate.query(sql, new Object[]{startDate, endDate, status}, new AttendanceRecordRowMapper());
+        return jdbcTemplate.query(sql, new AttendanceRecordRowMapper(), startDate, endDate, status);
     }
 
     @Override
@@ -115,7 +115,7 @@ public class AttendanceRecordDAOImpl implements AttendanceRecordDAO {
 
 class AttendanceRecordRowMapper implements RowMapper<AttendanceRecord> {
     @Override
-    public AttendanceRecord mapRow(ResultSet rs, int rowNum) throws SQLException {
+    public AttendanceRecord mapRow(@NonNull ResultSet rs, int rowNum) throws SQLException {
         AttendanceRecord record = new AttendanceRecord();
         record.setAid(rs.getInt("AID"));
         record.setEid(rs.getInt("EID"));
