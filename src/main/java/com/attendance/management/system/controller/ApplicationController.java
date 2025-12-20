@@ -131,7 +131,11 @@ public class ApplicationController {
         } else if ("REISSUE".equals(type)) {
             app.setReissueType((String) request.get("reissueType"));
             if (request.get("reissueTime") != null) {
-                app.setReissueTime(parseDateTime(request.get("reissueTime")));
+                LocalDateTime reissueTime = parseDateTime(request.get("reissueTime"));
+                app.setReissueTime(reissueTime);
+                // 补卡申请时将补卡时间同时设置为开始和结束时间
+                app.setStartTime(reissueTime);
+                app.setEndTime(reissueTime);
             }
         } else if ("OVERTIME".equals(type)) {
             app.setOvertimeType((String) request.get("overtimeType"));

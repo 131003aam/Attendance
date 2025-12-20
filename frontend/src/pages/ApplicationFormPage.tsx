@@ -16,7 +16,7 @@ const ApplicationFormPage = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
-  
+
   // 获取当前登录用户的ID
   const currentEmployeeId = user?.employeeId
   
@@ -106,18 +106,33 @@ const ApplicationFormPage = () => {
     e.preventDefault()
     setMessage('')
 
-    // 基础字段验证
-    if (!startTime || !endTime || !reason.trim()) {
-      setMessage('请填写完整信息')
-      return
-    }
+      // 基础字段验证
+      if (type !== 'REISSUE') {
+          // 非补卡申请需要验证开始时间和结束时间
+          if (!startTime || !endTime || !reason.trim()) {
+              setMessage('请填写完整信息')
+              return
+          }
+          // 开始时间不能早于当前时间的验证
+          const now = new Date()
+          if (new Date(startTime) < now) {
+              setMessage('开始时间不能早于当前时间')
+              return
+          }
 
-    if (new Date(startTime) >= new Date(endTime)) {
-      setMessage('结束时间必须晚于开始时间')
-      return
-    }
+          if (new Date(startTime) >= new Date(endTime)) {
+              setMessage('结束时间必须晚于开始时间')
+              return
+          }
+      } else {
+          // 补卡申请只需要验证补卡时间和理由
+          if (!reissueTimeValue || !reason.trim()) {
+              setMessage('请填写完整信息')
+              return
+          }
+      }
 
-    // 补卡申请特殊验证
+      // 补卡申请特殊验证
     if (type === 'REISSUE') {
       if (!reissueTimeValue) {
         setMessage('请选择补卡时间')
@@ -221,7 +236,7 @@ const ApplicationFormPage = () => {
     })
   }
 
-  const getTypeText = (t: ApplicationType) => {
+  /*const getTypeText = (t: ApplicationType) => {
     switch (t) {
       case 'LEAVE': return '请假'
       case 'REISSUE': return '补卡'
@@ -230,6 +245,7 @@ const ApplicationFormPage = () => {
       default: return t
     }
   }
+  */
 
   const canSubmitReissue = reissueLimit 
     ? reissueLimit.currentMonth < reissueLimit.limit 

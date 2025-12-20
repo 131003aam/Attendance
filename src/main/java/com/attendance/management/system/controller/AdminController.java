@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -373,14 +374,14 @@ public class AdminController {
             } else {
                 positionConfig.setMonthlyWorkDays(21); // 默认值
             }
-            
+
             Object dailyWorkHours = request.get("dailyWorkHours");
             if (dailyWorkHours != null) {
-                positionConfig.setDailyWorkHours(((Number) dailyWorkHours).doubleValue());
+                positionConfig.setDailyWorkHours(BigDecimal.valueOf(((Number) dailyWorkHours).doubleValue()));
             } else {
-                positionConfig.setDailyWorkHours(8.0); // 默认值
+                positionConfig.setDailyWorkHours(BigDecimal.valueOf(8.0)); // 默认值
             }
-            
+
             positionConfig.setDescription((String) request.get("description"));
             
             positionConfigService.createPositionConfig(positionConfig);
@@ -428,7 +429,7 @@ public class AdminController {
                 positionConfig.setMonthlyWorkDays(((Number) request.get("monthlyWorkDays")).intValue());
             }
             if (request.containsKey("dailyWorkHours")) {
-                positionConfig.setDailyWorkHours(((Number) request.get("dailyWorkHours")).doubleValue());
+                positionConfig.setDailyWorkHours(BigDecimal.valueOf(((Number) request.get("dailyWorkHours")).doubleValue()));
             }
             if (request.containsKey("description")) {
                 positionConfig.setDescription((String) request.get("description"));

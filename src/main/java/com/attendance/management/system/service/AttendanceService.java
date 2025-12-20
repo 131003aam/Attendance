@@ -9,6 +9,7 @@ import com.attendance.management.system.entity.PositionConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -201,7 +202,7 @@ public class AttendanceService {
                     todayRecord.getCheckInTime().toLocalTime(),
                     todayRecord.getCheckOutTime().toLocalTime()
             ).toMinutes();
-            todayRecord.setWorkHours(minutes / 60.0);
+            todayRecord.setWorkHours(BigDecimal.valueOf(minutes / 60.0));
         }
 
         attendanceRecordDAO.update(todayRecord);
@@ -291,19 +292,19 @@ public class AttendanceService {
         
         System.out.println("本周记录数: " + weekRecords.size());
         System.out.println("本月记录数: " + monthRecords.size());
-        
+
         // 计算本周工作时长
         double weekWorkHours = weekRecords.stream()
                 .filter(r -> r.getWorkHours() != null)
-                .mapToDouble(AttendanceRecord::getWorkHours)
+                .mapToDouble(r -> r.getWorkHours().doubleValue())
                 .sum();
-        
+
         // 计算本月工作时长
         double monthWorkHours = monthRecords.stream()
                 .filter(r -> r.getWorkHours() != null)
-                .mapToDouble(AttendanceRecord::getWorkHours)
+                .mapToDouble(r -> r.getWorkHours().doubleValue())
                 .sum();
-        
+
         System.out.println("本周工作时长: " + weekWorkHours);
         System.out.println("本月工作时长: " + monthWorkHours);
         
@@ -377,12 +378,12 @@ public class AttendanceService {
         earlyLeaveDays = (int) records.stream()
                 .filter(r -> "EARLY_LEAVE".equals(r.getStatus()))
                 .count();
-        
+
         workHours = records.stream()
                 .filter(r -> r.getWorkHours() != null)
-                .mapToDouble(AttendanceRecord::getWorkHours)
+                .mapToDouble(r -> r.getWorkHours().doubleValue())
                 .sum();
-        
+
         // 计算应出勤天数（如果有员工ID）
         if (employeeId != null) {
             Employee employee = employeeDAO.findByEmployeeId(employeeId);

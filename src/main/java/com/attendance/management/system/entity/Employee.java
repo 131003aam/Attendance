@@ -1,77 +1,98 @@
 package com.attendance.management.system.entity;
 
-public class Employee {
-    private Integer eid;           // 员工ID
-    private String did;            // 部门ID（字符型，长度10）
-    private String pid;            // 职务ID（字符型，长度10）
-    private String name;           // 姓名
-    private String sex;            // 性别
-    private String phone;          // 联系方式
-    private String password;       // 账号密码
-    private String role;           // 用户角色：EMPLOYEE, APPROVER, ADMIN
+import jakarta.persistence.*;
 
-    public Integer getEid() {
-        return eid;
-    }
+@Entity
+    @Table(name = "employee")
+    public class Employee {
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        @Column(name = "EID")
+        private Integer eid;           // 员工ID
 
-    public void setEid(Integer eid) {
-        this.eid = eid;
-    }
+        @Column(name = "DID", nullable = false)
+        private String did;            // 部门ID（字符型，长度10）
 
-    public String getDid() {
-        return did;
-    }
+        @Column(name = "PID", nullable = false)
+        private String pid;            // 职务ID（字符型，长度10）
 
-    public void setDid(String did) {
-        this.did = did;
-    }
+        @Column(name = "EName", nullable = false, length = 20)
+        private String name;           // 姓名
 
-    public String getPid() {
-        return pid;
-    }
+        @Column(name = "Sex", length = 2)
+        private String sex;            // 性别
 
-    public void setPid(String pid) {
-        this.pid = pid;
-    }
+        @Column(name = "Phone", length = 11)
+        private String phone;          // 联系方式
 
-    public String getName() {
-        return name;
-    }
+        @Column(name = "Password", nullable = false, length = 20)
+        private String password;       // 账号密码
 
-    public void setName(String name) {
-        this.name = name;
-    }
+        @Column(name = "Role", length = 10)
+        private String role;           // 用户角色：EMPLOYEE, APPROVER, ADMIN
 
-    public String getSex() {
-        return sex;
-    }
+        public Integer getEid() {
+            return eid;
+        }
 
-    public void setSex(String sex) {
-        this.sex = sex;
-    }
+        public void setEid(Integer eid) {
+            this.eid = eid;
+        }
 
-    public String getPhone() {
-        return phone;
-    }
+        public String getDid() {
+            return did;
+        }
 
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
+        public void setDid(String did) {
+            this.did = did;
+        }
 
-    public String getPassword() {
-        return password;
-    }
+        public String getPid() {
+            return pid;
+        }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+        public void setPid(String pid) {
+            this.pid = pid;
+        }
 
-    public String getRole() {
-        return role;
-    }
+        public String getName() {
+            return name;
+        }
 
-    public void setRole(String role) {
-        this.role = role;
-    }
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getSex() {
+            return sex;
+        }
+
+        public void setSex(String sex) {
+            this.sex = sex;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
 }
 

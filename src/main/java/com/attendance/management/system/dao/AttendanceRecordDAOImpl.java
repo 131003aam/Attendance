@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -133,12 +134,12 @@ class AttendanceRecordRowMapper implements RowMapper<AttendanceRecord> {
         }
         record.setCheckOutLocation(rs.getString("CheckOutLocation"));
         record.setStatus(rs.getString("Status"));
-        
-        Double workHours = rs.getDouble("WorkHours");
+
+        BigDecimal workHours = rs.getBigDecimal("WorkHours");
         if (!rs.wasNull()) {
             record.setWorkHours(workHours);
         }
-        
+
         return record;
     }
 }

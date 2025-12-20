@@ -112,7 +112,7 @@ class PositionConfigRowMapper implements RowMapper<PositionConfig> {
         positionConfig.setWorkStartTime(rs.getTime("WorkStartTime"));
         positionConfig.setWorkEndTime(rs.getTime("WorkEndTime"));
         positionConfig.setMonthlyWorkDays(rs.getInt("MonthlyWorkDays"));
-        positionConfig.setDailyWorkHours(rs.getDouble("DailyWorkHours"));
+        positionConfig.setDailyWorkHours(rs.getBigDecimal("DailyWorkHours"));
         positionConfig.setDescription(rs.getString("Description"));
         return positionConfig;
     }
