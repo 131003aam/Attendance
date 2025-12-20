@@ -1,10 +1,12 @@
 package com.attendance.management.system.controller;
 
+import com.attendance.management.system.entity.Application;
+import com.attendance.management.system.service.ApplicationService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,55 +17,110 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "*")
 public class ApprovalController {
 
+    @Autowired
+    private ApplicationService applicationService;
+
+    /**
+     * 将 Application 实体转换为 Map（用于 JSON 响应）
+     */
+    private Map<String, Object> applicationToMap(Application app) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", app.getAid());
+        map.put("employeeId", app.getEid());
+        map.put("employeeName", applicationService.getEmployeeName(app.getEid()));
+        map.put("type", app.getApplicationType());
+        if (app.getStartTime() != null) {
+            map.put("startTime", app.getStartTime().toString());
+        }
+        if (app.getEndTime() != null) {
+            map.put("endTime", app.getEndTime().toString());
+        }
+        map.put("reason", app.getReason());
+        map.put("status", app.getStatus());
+        if (app.getApproverId() != null) {
+            map.put("approverId", app.getApproverId());
+            map.put("approverName", applicationService.getEmployeeName(app.getApproverId()));
+        }
+        if (app.getApproveTime() != null) {
+            map.put("approveTime", app.getApproveTime().toString());
+        }
+        map.put("rejectReason", app.getRejectReason());
+        if (app.getCreatedAt() != null) {
+            map.put("createdAt", app.getCreatedAt().toString());
+        }
+
+        // 请假特有字段
+        if ("LEAVE".equals(app.getApplicationType())) {
+            map.put("leaveType", app.getLeaveType());
+            map.put("attachment", app.getAttachment());
+        }
+
+        // 补卡特有字段
+        if ("REISSUE".equals(app.getApplicationType())) {
+            map.put("reissueType", app.getReissueType());
+            if (app.getReissueTime() != null) {
+                map.put("reissueTime", app.getReissueTime().toString());
+            }
+        }
+
+        // 加班特有字段
+        if ("OVERTIME".equals(app.getApplicationType())) {
+            map.put("overtimeType", app.getOvertimeType());
+            map.put("isCompensatory", app.getIsCompensatory());
+        }
+
+        // 出差特有字段
+        if ("BUSINESS_TRIP".equals(app.getApplicationType())) {
+            map.put("destination", app.getDestination());
+            map.put("companions", app.getCompanions());
+            map.put("transportation", app.getTransportation());
+            map.put("budget", app.getBudget());
+        }
+
+        return map;
+    }
+
     @GetMapping("/pending")
     public ResponseEntity<List<Map<String, Object>>> getPendingApplications() {
-        // 从ApplicationController获取所有申请，筛选出待审批的
         try {
-            Field field = ApplicationController.class.getDeclaredField("applicationsStore");
-            field.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            Map<Long, Map<String, Object>> store = (Map<Long, Map<String, Object>>) field.get(null);
-            
-            List<Map<String, Object>> pending = store.values().stream()
-                    .filter(app -> "PENDING".equals(app.get("status")))
+            List<Application> pending = applicationService.getPendingApplications();
+            List<Map<String, Object>> result = pending.stream()
+                    .map(this::applicationToMap)
                     .collect(Collectors.toList());
-            
-            return ResponseEntity.ok(pending);
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
-            return ResponseEntity.ok(new ArrayList<>());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @PostMapping("/applications/{id}/review")
     public ResponseEntity<Map<String, Object>> reviewApplication(
-            @PathVariable Long id,
+            @PathVariable Integer id,
             @RequestBody Map<String, Object> request) {
         try {
-            Field field = ApplicationController.class.getDeclaredField("applicationsStore");
-            field.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            Map<Long, Map<String, Object>> store = (Map<Long, Map<String, Object>>) field.get(null);
+            Boolean approved = (Boolean) request.getOrDefault("approved", false);
+            Integer approverId = 10001; // 默认审批人ID，实际应该从认证信息中获取
             
-            Map<String, Object> application = store.get(id);
-            if (application != null) {
-                boolean approved = (Boolean) request.getOrDefault("approved", false);
-                application.put("status", approved ? "APPROVED" : "REJECTED");
-                if (!approved && request.containsKey("reason")) {
-                    application.put("rejectReason", request.get("reason"));
-                }
-                application.put("approverId", 10001);
-                application.put("approverName", "审批人");
-                application.put("approveTime", java.time.LocalDateTime.now().toString());
-                return ResponseEntity.ok(application);
+            Application application;
+            if (approved) {
+                application = applicationService.approveApplication(id, approverId);
+            } else {
+                String reason = (String) request.get("reason");
+                application = applicationService.rejectApplication(id, approverId, reason);
             }
+
+            if (application == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "申请不存在");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            }
+
+            Map<String, Object> result = applicationToMap(application);
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
-            // 如果获取失败，返回新对象
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", "审批失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
-        
-        Map<String, Object> application = new HashMap<>();
-        application.put("id", id);
-        application.put("status", (Boolean) request.getOrDefault("approved", false) ? "APPROVED" : "REJECTED");
-        return ResponseEntity.ok(application);
     }
 }
-
