@@ -283,9 +283,17 @@ public class ApplicationController {
                     LocalDateTime reissueTime = parseDateTime(reissueTimeStr);
                     LocalDate reissueDate = reissueTime.toLocalDate();
 
+                    // 验证0: 补卡次数限制检查
+                    int currentReissueCount = applicationService.getReissueLimit(employeeId);
+                    if (currentReissueCount >= 3) {
+                        Map<String, Object> error = new HashMap<>();
+                        error.put("message", "本月补卡次数已达上限（3次）");
+                        error.put("success", false);
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                    }
                     // 验证1: 补卡日期不能与正常考勤日期相同
                     AttendanceRecord existingRecord = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, reissueDate);
-                    if (existingRecord != null && existingRecord.getCheckInTime() != null) {
+                    if (existingRecord != null &&  "NORMAL".equals(existingRecord.getStatus())) {
                         Map<String, Object> error = new HashMap<>();
                         error.put("message", "该日期已有正常考勤记录，不能提交补卡申请");
                         error.put("success", false);

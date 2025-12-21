@@ -70,7 +70,7 @@ const ApplicationFormPage = () => {
 
   const loadReissueLimit = async () => {
     try {
-      const limit = await getReissueLimit()
+      const limit = await getReissueLimit(currentEmployeeId)
       setReissueLimit(limit)
     } catch (error) {
       console.error('获取补卡限制失败:', error)

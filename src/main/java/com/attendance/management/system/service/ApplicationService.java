@@ -115,16 +115,21 @@ public class ApplicationService {
     }
 
     public int getReissueLimit(Integer eid) {
-        // 获取当前月份的补卡申请数量
+        // 获取当前月份的已批准补卡申请数量
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfMonth = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-        
-        List<Application> reissueApplications = applicationDAO.findByEmployeeId(eid);
+        LocalDateTime endOfMonth = startOfMonth.plusMonths(1).minusNanos(1);
+
+        List<Application> reissueApplications = applicationDAO.findByEmployeeIdAndStatus(eid, "APPROVED");
         long count = reissueApplications.stream()
                 .filter(app -> "REISSUE".equals(app.getApplicationType()))
-                .filter(app -> app.getCreatedAt() != null && app.getCreatedAt().isAfter(startOfMonth))
+                .filter(app -> app.getReissueTime() != null)
+                .filter(app -> {
+                    LocalDateTime reissueTime = app.getReissueTime();
+                    return !reissueTime.isBefore(startOfMonth) && !reissueTime.isAfter(endOfMonth);
+                })
                 .count();
-        
+
         return (int) count;
     }
 
@@ -132,13 +137,12 @@ public class ApplicationService {
         // 获取员工ID和补卡时间
         Integer employeeId = reissueApplication.getEid();
         LocalDateTime reissueTime = reissueApplication.getReissueTime();
-
         if (employeeId != null && reissueTime != null) {
             // 查询对应的考勤记录
             LocalDate recordDate = reissueTime.toLocalDate();
             AttendanceRecord attendanceRecord = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, recordDate);
 
-            if (attendanceRecord != null) {
+            if (!"NORMAL".equals(attendanceRecord.getStatus())) {
                 // 根据补卡类型更新考勤记录
                 String reissueType = reissueApplication.getReissueType();
                 if ("MISSING_CHECK_IN".equals(reissueType)) {

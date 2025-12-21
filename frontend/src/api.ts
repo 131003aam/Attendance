@@ -531,18 +531,21 @@ export const cancelApplication = async (applicationId: number): Promise<void> =>
 }
 
 // 获取补卡次数限制
-export const getReissueLimit = async (): Promise<{ currentMonth: number; limit: number }> => {
-  if (MOCK_MODE) {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    return { currentMonth: 0, limit: 3 }
-  }
+// 修改为接受员工ID参数
+export const getReissueLimit = async (employeeId?: number): Promise<{ currentMonth: number; limit: number }> => {
+    if (MOCK_MODE) {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        return { currentMonth: 0, limit: 3 }
+    }
 
-  try {
-    const response = await api.get<{ currentMonth: number; limit: number }>('/applications/reissue/limit')
-    return response.data
-  } catch (error) {
-    throw error instanceof Error ? error : new Error('获取补卡限制失败')
-  }
+    try {
+        const response = await api.get<{ currentMonth: number; limit: number }>('/applications/reissue/limit', {
+            params: { employeeId } // 传递员工ID作为查询参数
+        })
+        return response.data
+    } catch (error) {
+        throw error instanceof Error ? error : new Error('获取补卡限制失败')
+    }
 }
 
 // 管理员：获取部门列表

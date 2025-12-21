@@ -122,12 +122,15 @@ const StatisticsPage = () => {
     }
   }
 
-  const handleQuery = () => {
-    loadRecords()
-    setShowDetail(true)
+  const handleQuery = async () => {
+      await loadRecords();
+      // 同时更新统计信息以保持一致性
+      await loadStatistics();
+      setShowDetail(true);
   }
 
-  const handleReset = () => {
+
+    const handleReset = () => {
     setStartDate('')
     setEndDate('')
     setStatusFilter('ALL')
@@ -179,7 +182,15 @@ const StatisticsPage = () => {
 
   // 根据查询到的记录计算实际统计
   const getQueryStatistics = () => {
-    if (!records.length) return null
+    if (!records.length)
+        return {
+            lateDays: 0,
+            earlyLeaveDays: 0,
+            missingDays: 0,
+            normalDays: 0,
+            workHours: 0,
+            totalDays: 0
+        }
     
     const lateDays = records.filter(r => r.status === 'LATE').length
     const earlyLeaveDays = records.filter(r => r.status === 'EARLY_LEAVE').length
@@ -351,9 +362,17 @@ const StatisticsPage = () => {
               {(() => {
                 // 如果已经查询了记录，使用查询结果的统计
                 const queryStats = getQueryStatistics()
-                if (queryStats) {
-                  return `${queryStats.missingDays} 天`
-                }
+                  if (queryStats && showDetail) {
+                      // 查询状态下，缺卡天数 = 应出勤天数 - 正常出勤天数
+                      const totalDays = queryStats.totalDays;
+                      const normalDays = queryStats.normalDays;
+                      // 如果需要考虑应出勤天数，可以根据实际情况调整计算方式
+                      const missingDays = totalDays - normalDays;
+                      return `${missingDays} 天`;
+                  }
+                  //if (queryStats) {
+                //  return `${queryStats.missingDays} 天`
+                //}
                 // 否则使用汇总统计
                 return viewType === 'week' && stats.weekSummary 
                   ? `${stats.weekSummary.missingDays} 天`

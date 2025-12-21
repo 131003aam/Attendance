@@ -1,8 +1,10 @@
 package com.attendance.management.system.service;
 
+import com.attendance.management.system.dao.ApplicationDAO;
 import com.attendance.management.system.dao.AttendanceRecordDAO;
 import com.attendance.management.system.dao.EmployeeDAO;
 import com.attendance.management.system.dao.PositionConfigDAO;
+import com.attendance.management.system.entity.Application;
 import com.attendance.management.system.entity.AttendanceRecord;
 import com.attendance.management.system.entity.Employee;
 import com.attendance.management.system.entity.PositionConfig;
@@ -29,6 +31,10 @@ public class AttendanceService {
 
     @Autowired
     private PositionConfigDAO positionConfigDAO;
+
+    @Autowired
+    private ApplicationDAO applicationDAO;
+
 
     /**
      * 获取今日考勤记录，并根据当前职务配置重新计算状态
@@ -416,31 +422,77 @@ public class AttendanceService {
         
         return summary;
     }
-    
+
     /**
-     * 计算加班时长（需要查询申请表，暂时返回0）
+     * 计算加班时长（查询application表，计算已批准的加班申请时长）
      */
     private double calculateOvertimeHours(Integer employeeId, Integer departmentId, LocalDate startDate, LocalDate endDate) {
-        // TODO: 查询application表，计算已批准的加班申请时长
-        // 暂时返回0
+        if (employeeId != null) {
+            // 查询指定员工的已批准加班申请
+            List<Application> overtimeApps = applicationDAO.findByEmployeeIdAndStatus(employeeId, "APPROVED");
+            return overtimeApps.stream()
+                    .filter(app -> "OVERTIME".equals(app.getApplicationType()))
+                    .filter(app -> app.getStartTime() != null && app.getEndTime() != null)
+                    .filter(app -> {
+                        LocalDate appDate = app.getStartTime().toLocalDate();
+                        return !appDate.isBefore(startDate) && !appDate.isAfter(endDate);
+                    })
+                    .mapToDouble(app -> {
+                        long minutes = java.time.Duration.between(
+                                app.getStartTime(),
+                                app.getEndTime()).toMinutes();
+                        return minutes / 60.0;
+                    })
+                    .sum();
+        }
         return 0.0;
     }
-    
+
     /**
-     * 计算请假天数（需要查询申请表，暂时返回0）
+     * 计算请假天数（查询application表，计算已批准的请假申请天数）
      */
     private int calculateLeaveDays(Integer employeeId, Integer departmentId, LocalDate startDate, LocalDate endDate) {
-        // TODO: 查询application表，计算已批准的请假申请天数
-        // 暂时返回0
+        if (employeeId != null) {
+            // 查询指定员工的已批准请假申请
+            List<Application> leaveApps = applicationDAO.findByEmployeeIdAndStatus(employeeId, "APPROVED");
+            return (int) leaveApps.stream()
+                    .filter(app -> "LEAVE".equals(app.getApplicationType()))
+                    .filter(app -> app.getStartTime() != null && app.getEndTime() != null)
+                    .filter(app -> {
+                        LocalDate appStartDate = app.getStartTime().toLocalDate();
+                        LocalDate appEndDate = app.getEndTime().toLocalDate();
+                        // 检查请假日期是否在统计范围内
+                        return !appEndDate.isBefore(startDate) && !appStartDate.isAfter(endDate);
+                    })
+                    .mapToLong(app -> {
+                        LocalDate appStartDate = app.getStartTime().toLocalDate();
+                        LocalDate appEndDate = app.getEndTime().toLocalDate();
+                        // 计算重叠天数
+                        LocalDate overlapStart = appStartDate.isAfter(startDate) ? appStartDate : startDate;
+                        LocalDate overlapEnd = appEndDate.isBefore(endDate) ? appEndDate : endDate;
+                        return java.time.temporal.ChronoUnit.DAYS.between(overlapStart, overlapEnd) + 1;
+                    })
+                    .sum();
+        }
         return 0;
     }
-    
+
     /**
-     * 计算补卡次数（需要查询申请表，暂时返回0）
+     * 计算补卡次数（查询application表，计算已批准的补卡申请次数）
      */
     private int calculateReissueCount(Integer employeeId, Integer departmentId, LocalDate startDate, LocalDate endDate) {
-        // TODO: 查询application表，计算已批准的补卡申请次数
-        // 暂时返回0
+        if (employeeId != null) {
+            // 查询指定员工的已批准补卡申请
+            List<Application> reissueApps = applicationDAO.findByEmployeeIdAndStatus(employeeId, "APPROVED");
+            return (int) reissueApps.stream()
+                    .filter(app -> "REISSUE".equals(app.getApplicationType()))
+                    .filter(app -> app.getReissueTime() != null)
+                    .filter(app -> {
+                        LocalDate reissueDate = app.getReissueTime().toLocalDate();
+                        return !reissueDate.isBefore(startDate) && !reissueDate.isAfter(endDate);
+                    })
+                    .count();
+        }
         return 0;
     }
 }
