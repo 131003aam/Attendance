@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../../contexts/AuthContext'
 import { getApplications, approveApplication } from '../../api'
 import type { Application } from '../../types'
 import './AdminPages.css'
@@ -7,6 +8,7 @@ const AdminApplicationsPage = () => {
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<'all' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'>('all')
+  const { user } = useAuth()
 
   useEffect(() => {
     loadApplications()
@@ -25,8 +27,16 @@ const AdminApplicationsPage = () => {
   }
 
   const handleApprove = async (id: number, approved: boolean) => {
+    if (!user?.employeeId) {
+      alert('无法获取当前用户信息，请重新登录')
+      return
+    }
     try {
-      await approveApplication({ applicationId: id, approved })
+      await approveApplication({ 
+        applicationId: id, 
+        approved,
+        approverId: user.employeeId
+      })
       await loadApplications()
     } catch (error) {
       console.error('审批失败:', error)

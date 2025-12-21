@@ -35,6 +35,14 @@ public class EmployeeDAOImpl implements EmployeeDAO {
     }
 
     @Override
+    public List<Employee> findByDepartmentId(Integer departmentId) {
+        // 将数字ID转换为字符串格式（如：1 -> "D000000001"）
+        String departmentIdStr = "D" + String.format("%09d", departmentId);
+        String sql = "SELECT * FROM employee WHERE DID = ? ORDER BY EID";
+        return jdbcTemplate.query(sql, new EmployeeRowMapper(), departmentIdStr);
+    }
+
+    @Override
     public void insert(Employee employee) {
         String sql = "INSERT INTO employee (DID, PID, EName, Sex, Phone, Password, Role) VALUES (?, ?, ?, ?, ?, ?, ?)";
         jdbcTemplate.update(sql,

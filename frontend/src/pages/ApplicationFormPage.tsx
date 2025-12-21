@@ -7,7 +7,6 @@ import type {
   ApplicationRequest,
   LeaveSubType,
   OvertimeType,
-  ReissueType,
   Employee
 } from '../types'
 import './ApplicationFormPage.css'
@@ -36,7 +35,6 @@ const ApplicationFormPage = () => {
   const [attachment, setAttachment] = useState<File | null>(null)
   
   // 补卡特有字段
-  const [reissueType, setReissueType] = useState<ReissueType>('MISSING_CHECK_IN')
   const [reissueTimeValue, setReissueTimeValue] = useState(reissueTime)
   const [reissueLimit, setReissueLimit] = useState<{ currentMonth: number; limit: number } | null>(null)
   
@@ -138,6 +136,13 @@ const ApplicationFormPage = () => {
         setMessage('请选择补卡时间')
         return
       }
+      // 验证补卡时间不能晚于当前时间
+      const now = new Date()
+      const reissueTime = new Date(reissueTimeValue)
+      if (reissueTime > now) {
+        setMessage('补卡时间不能晚于当前时间')
+        return
+      }
       if (reissueLimit && reissueLimit.currentMonth >= reissueLimit.limit) {
         setMessage(`本月补卡次数已达上限（${reissueLimit.limit}次），无法提交补卡申请`)
         return
@@ -178,7 +183,6 @@ const ApplicationFormPage = () => {
             startTime,
             endTime,
             reason,
-            reissueType,
             reissueTime: reissueTimeValue,
             employeeId: currentEmployeeId, // 添加当前用户ID
           } as any
@@ -282,17 +286,6 @@ const ApplicationFormPage = () => {
         {/* 补卡特有字段 */}
         {type === 'REISSUE' && (
           <>
-            <label>
-              <span>补卡类型 *</span>
-              <select
-                value={reissueType}
-                onChange={(e) => setReissueType(e.target.value as ReissueType)}
-                disabled={loading}
-              >
-                <option value="MISSING_CHECK_IN">漏打上班卡</option>
-                <option value="MISSING_CHECK_OUT">漏打下班卡</option>
-              </select>
-            </label>
             <label>
               <span>补卡时间 *</span>
               <input

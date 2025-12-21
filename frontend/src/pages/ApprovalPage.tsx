@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import { getApplications, reviewApplication } from '../api'
 import type { Application, ApprovalRequest } from '../types'
 import './ApprovalPage.css'
@@ -10,6 +11,7 @@ const ApprovalPage = () => {
   const [typeFilter, setTypeFilter] = useState<Application['type'] | 'all'>('all')
   const [reviewingId, setReviewingId] = useState<number | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const { user } = useAuth()
 
   useEffect(() => {
     loadApplications()
@@ -52,12 +54,18 @@ const ApprovalPage = () => {
       return
     }
 
+    if (!user?.employeeId) {
+      alert('无法获取当前用户信息，请重新登录')
+      return
+    }
+
     setReviewingId(id)
     try {
       const request: ApprovalRequest = {
         applicationId: id,
         approved,
         reason: approved ? undefined : rejectReason,
+        approverId: user.employeeId,
       }
       await reviewApplication(request)
       setRejectReason('')

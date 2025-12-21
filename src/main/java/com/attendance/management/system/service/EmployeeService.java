@@ -32,6 +32,10 @@ public class EmployeeService {
         return employeeDAO.findAll();
     }
 
+    public List<Employee> getEmployeesByDepartmentId(Integer departmentId) {
+        return employeeDAO.findByDepartmentId(departmentId);
+    }
+
     public void createEmployee(Employee employee) {
         employeeDAO.insert(employee);
     }

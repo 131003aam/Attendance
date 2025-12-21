@@ -279,18 +279,36 @@ const StatisticsPage = () => {
         </div>
       )}
 
-      {/* 本周/本月工作时长 */}
+      {/* 统计信息卡片 */}
       {stats && (
         <div className="stats-grid">
           <div className="stat-card">
-            <div className="stat-label">本周工作时长</div>
-            <div className="stat-value">{stats.weekWorkHours.toFixed(1)} 小时</div>
+            <div className="stat-label">{viewType === 'week' ? '本周' : '本月'}工作时长</div>
+            <div className="stat-value">
+              {viewType === 'week' ? stats.weekWorkHours.toFixed(1) : stats.monthWorkHours.toFixed(1)} 小时
+            </div>
           </div>
 
-          <div className="stat-card">
-            <div className="stat-label">本月工作时长</div>
-            <div className="stat-value">{stats.monthWorkHours.toFixed(1)} 小时</div>
-          </div>
+          {stats.overtimeHours !== undefined && (
+            <div className="stat-card">
+              <div className="stat-label">加班时长</div>
+              <div className="stat-value">{stats.overtimeHours.toFixed(1)} 小时</div>
+            </div>
+          )}
+
+          {stats.leaveDays !== undefined && (
+            <div className="stat-card">
+              <div className="stat-label">请假天数</div>
+              <div className="stat-value">{stats.leaveDays} 天</div>
+            </div>
+          )}
+
+          {stats.reissueCount !== undefined && (
+            <div className="stat-card">
+              <div className="stat-label">补卡次数</div>
+              <div className="stat-value">{stats.reissueCount} 次</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -358,65 +376,6 @@ const StatisticsPage = () => {
           </div>
         </div>
       )}
-
-        {/* 其他统计信息 */}
-        {stats && (
-            <div className="stats-grid">
-                <div className="stat-card">
-                    <div className="stat-label">缺卡天数</div>
-                    <div className="stat-value error">
-                        {viewType === 'week' && stats.weekSummary
-                            ? `${stats.weekSummary.missingDays} 天`
-                            : viewType === 'month' && stats.monthSummary
-                                ? `${stats.monthSummary.missingDays} 天`
-                                : `${stats.missingDays} 天`}
-                    </div>
-                </div>
-
-                <div className="stat-card">
-                    <div className="stat-label">迟到天数</div>
-                    <div className="stat-value warning">
-                        {viewType === 'week' && stats.weekSummary
-                            ? `${stats.weekSummary.lateDays} 天`
-                            : viewType === 'month' && stats.monthSummary
-                                ? `${stats.monthSummary.lateDays} 天`
-                                : `${stats.lateCount} 天`}
-                    </div>
-                </div>
-
-                <div className="stat-card">
-                    <div className="stat-label">早退天数</div>
-                    <div className="stat-value warning">
-                        {viewType === 'week' && stats.weekSummary
-                            ? `${stats.weekSummary.earlyLeaveDays} 天`
-                            : viewType === 'month' && stats.monthSummary
-                                ? `${stats.monthSummary.earlyLeaveDays} 天`
-                                : `${stats.earlyLeaveCount} 天`}
-                    </div>
-                </div>
-
-                {stats.overtimeHours !== undefined && (
-                    <div className="stat-card">
-                        <div className="stat-label">加班时长</div>
-                        <div className="stat-value">{stats.overtimeHours.toFixed(1)} 小时</div>
-                    </div>
-                )}
-
-                {stats.leaveDays !== undefined && (
-                    <div className="stat-card">
-                        <div className="stat-label">请假天数</div>
-                        <div className="stat-value">{stats.leaveDays} 天</div>
-                    </div>
-                )}
-
-                {stats.reissueCount !== undefined && (
-                    <div className="stat-card">
-                        <div className="stat-label">补卡次数</div>
-                        <div className="stat-value">{stats.reissueCount} 次</div>
-                    </div>
-                )}
-            </div>
-        )}
 
 
         {/* 查询筛选 */}

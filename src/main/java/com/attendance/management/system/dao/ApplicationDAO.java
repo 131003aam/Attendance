@@ -14,3 +14,4 @@ public interface ApplicationDAO {
     void delete(Integer aid);
 }
 
+

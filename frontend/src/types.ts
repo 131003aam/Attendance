@@ -223,6 +223,7 @@ export interface ApprovalRequest {
   applicationId: number
   approved: boolean
   reason?: string
+  approverId?: number
 }
 
 // 部门信息

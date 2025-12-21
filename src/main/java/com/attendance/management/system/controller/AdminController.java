@@ -525,8 +525,25 @@ public class AdminController {
                 return ResponseEntity.status(404).body(error);
             }
 
-            // 获取审批人ID（可以从认证信息中获取，这里暂时使用默认值）
-            Integer approverId = 10001; // 默认管理员ID，实际应该从认证信息中获取
+            // 从请求中获取审批人ID
+            Integer approverId = null;
+            Object approverIdObj = request.get("approverId");
+            if (approverIdObj instanceof Number) {
+                approverId = ((Number) approverIdObj).intValue();
+            } else if (approverIdObj instanceof String) {
+                try {
+                    approverId = Integer.parseInt((String) approverIdObj);
+                } catch (NumberFormatException e) {
+                    // 解析失败，使用默认值
+                }
+            }
+            
+            // 如果无法获取审批人ID，返回错误
+            if (approverId == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "无法获取审批人信息，请重新登录");
+                return ResponseEntity.status(401).body(error);
+            }
             
             // 如果是补卡申请且审批通过，需要更新考勤记录
             boolean approved = (Boolean) request.getOrDefault("approved", false);

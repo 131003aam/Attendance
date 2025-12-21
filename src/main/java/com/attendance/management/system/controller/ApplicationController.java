@@ -139,7 +139,7 @@ public class ApplicationController {
             app.setLeaveType((String) request.get("leaveType"));
             app.setAttachment((String) request.get("attachment"));
         } else if ("REISSUE".equals(type)) {
-            app.setReissueType((String) request.get("reissueType"));
+            // 补卡申请不再需要补卡类型，直接处理补卡时间
             if (request.get("reissueTime") != null) {
                 LocalDateTime reissueTime = parseDateTime(request.get("reissueTime"));
                 app.setReissueTime(reissueTime);
@@ -296,7 +296,16 @@ public class ApplicationController {
                         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
                     }
 
-                    // 验证2: 同一天不能重复提交补卡申请
+                    // 验证2: 补卡时间不能晚于当前时间
+                    LocalDateTime now = LocalDateTime.now();
+                    if (reissueTime.isAfter(now)) {
+                        Map<String, Object> error = new HashMap<>();
+                        error.put("message", "补卡时间不能晚于当前时间");
+                        error.put("success", false);
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                    }
+
+                    // 验证3: 同一天不能重复提交补卡申请
                     List<Application> existingReissues = applicationDAO.findByEmployeeId(employeeId);
                     boolean hasDuplicate = existingReissues.stream()
                             .filter(app -> "REISSUE".equals(app.getApplicationType()))

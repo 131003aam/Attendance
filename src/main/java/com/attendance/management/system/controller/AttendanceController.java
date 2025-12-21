@@ -132,27 +132,49 @@ public class AttendanceController {
 
     @GetMapping(value = "/today", produces = "application/json")
     public ResponseEntity<Map<String, Object>> getTodayAttendance(@RequestParam(required = true) Integer employeeId) {
-        AttendanceRecord record = attendanceService.getTodayAttendance(employeeId);
-        if (record == null) {
-            return ResponseEntity.notFound().build();
+        try {
+            AttendanceRecord record = attendanceService.getTodayAttendance(employeeId);
+            if (record == null) {
+                Map<String, Object> emptyRecord = new HashMap<>();
+                emptyRecord.put("employeeId", employeeId);
+                emptyRecord.put("date", LocalDate.now().toString());
+                emptyRecord.put("status", "MISSING");
+                return ResponseEntity.ok(emptyRecord);
+            }
+            
+            Map<String, Object> recordMap = new HashMap<>();
+            if (record.getAid() != null) {
+                recordMap.put("id", record.getAid());
+            }
+            recordMap.put("employeeId", record.getEid());
+            recordMap.put("date", record.getRecordDate().toString());
+            if (record.getCheckInTime() != null) {
+                recordMap.put("checkInTime", record.getCheckInTime().toString());
+            }
+            if (record.getCheckInLocation() != null) {
+                recordMap.put("checkInLocation", record.getCheckInLocation());
+            }
+            if (record.getCheckOutTime() != null) {
+                recordMap.put("checkOutTime", record.getCheckOutTime().toString());
+            }
+            if (record.getCheckOutLocation() != null) {
+                recordMap.put("checkOutLocation", record.getCheckOutLocation());
+            }
+            if (record.getStatus() != null) {
+                recordMap.put("status", record.getStatus());
+            }
+            if (record.getWorkHours() != null) {
+                recordMap.put("workHours", record.getWorkHours());
+            }
+            
+            return ResponseEntity.ok(recordMap);
+        } catch (Exception e) {
+            System.err.println("获取今日考勤记录失败: " + e.getMessage());
+            e.printStackTrace();
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "获取今日考勤记录失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
-        
-        Map<String, Object> recordMap = new HashMap<>();
-        recordMap.put("id", record.getAid());
-        recordMap.put("employeeId", record.getEid());
-        recordMap.put("date", record.getRecordDate().toString());
-        if (record.getCheckInTime() != null) {
-            recordMap.put("checkInTime", record.getCheckInTime().toString());
-        }
-        recordMap.put("checkInLocation", record.getCheckInLocation());
-        if (record.getCheckOutTime() != null) {
-            recordMap.put("checkOutTime", record.getCheckOutTime().toString());
-        }
-        recordMap.put("checkOutLocation", record.getCheckOutLocation());
-        recordMap.put("status", record.getStatus());
-        recordMap.put("workHours", record.getWorkHours());
-        
-        return ResponseEntity.ok(recordMap);
     }
 
     @GetMapping(value = "/position-config", produces = "application/json")
@@ -198,12 +220,24 @@ public class AttendanceController {
             System.out.println("找到职务配置: " + positionConfig.getPName());
 
             Map<String, Object> configMap = new HashMap<>();
-            configMap.put("id", positionConfig.getPid());
-            configMap.put("name", positionConfig.getPName());
-            configMap.put("workStartTime", positionConfig.getWorkStartTime().toString());
-            configMap.put("workEndTime", positionConfig.getWorkEndTime().toString());
-            configMap.put("monthlyWorkDays", positionConfig.getMonthlyWorkDays());
-            configMap.put("dailyWorkHours", positionConfig.getDailyWorkHours());
+            if (positionConfig.getPid() != null) {
+                configMap.put("id", positionConfig.getPid());
+            }
+            if (positionConfig.getPName() != null) {
+                configMap.put("name", positionConfig.getPName());
+            }
+            if (positionConfig.getWorkStartTime() != null) {
+                configMap.put("workStartTime", positionConfig.getWorkStartTime().toString());
+            }
+            if (positionConfig.getWorkEndTime() != null) {
+                configMap.put("workEndTime", positionConfig.getWorkEndTime().toString());
+            }
+            if (positionConfig.getMonthlyWorkDays() != null) {
+                configMap.put("monthlyWorkDays", positionConfig.getMonthlyWorkDays());
+            }
+            if (positionConfig.getDailyWorkHours() != null) {
+                configMap.put("dailyWorkHours", positionConfig.getDailyWorkHours());
+            }
             
             return ResponseEntity.ok(configMap);
         } catch (Exception e) {

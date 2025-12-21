@@ -43,45 +43,51 @@ public class AttendanceService {
      * 获取今日考勤记录，并根据当前职务配置重新计算状态
      */
     public AttendanceRecord getTodayAttendance(Integer employeeId) {
-        AttendanceRecord record = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, LocalDate.now());
-        if (record == null) {
-            return null;
-        }
-        
-        // 根据当前职务配置重新计算考勤状态
-        Employee employee = employeeDAO.findByEmployeeId(employeeId);
-        if (employee != null && employee.getPid() != null) {
-            PositionConfig positionConfig = positionConfigDAO.findById(employee.getPid().trim());
-            if (positionConfig != null && record.getCheckInTime() != null) {
-                // 重新判断是否迟到
-                LocalTime workStartTime = positionConfig.getWorkStartTime().toLocalTime();
-                LocalTime checkInTime = record.getCheckInTime().toLocalTime();
-                
-                String newStatus = "NORMAL";
-                if (checkInTime.isAfter(workStartTime)) {
-                    newStatus = "LATE";
-                }
-                
-                // 如果已下班打卡，判断是否早退
-                if (record.getCheckOutTime() != null) {
-                    LocalTime workEndTime = positionConfig.getWorkEndTime().toLocalTime();
-                    LocalTime checkOutTime = record.getCheckOutTime().toLocalTime();
+        try {
+            AttendanceRecord record = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, LocalDate.now());
+            if (record == null) {
+                return null;
+            }
+            
+            // 根据当前职务配置重新计算考勤状态
+            Employee employee = employeeDAO.findByEmployeeId(employeeId);
+            if (employee != null && employee.getPid() != null && !employee.getPid().trim().isEmpty()) {
+                PositionConfig positionConfig = positionConfigDAO.findById(employee.getPid().trim());
+                if (positionConfig != null && positionConfig.getWorkStartTime() != null && record.getCheckInTime() != null) {
+                    // 重新判断是否迟到
+                    LocalTime workStartTime = positionConfig.getWorkStartTime().toLocalTime();
+                    LocalTime checkInTime = record.getCheckInTime().toLocalTime();
                     
-                    if (checkOutTime.isBefore(workEndTime)) {
-                        if ("LATE".equals(newStatus)) {
-                            // 既迟到又早退，保持LATE状态
-                        } else {
-                            newStatus = "EARLY_LEAVE";
+                    String newStatus = "NORMAL";
+                    if (checkInTime.isAfter(workStartTime)) {
+                        newStatus = "LATE";
+                    }
+                    
+                    // 如果已下班打卡，判断是否早退
+                    if (record.getCheckOutTime() != null && positionConfig.getWorkEndTime() != null) {
+                        LocalTime workEndTime = positionConfig.getWorkEndTime().toLocalTime();
+                        LocalTime checkOutTime = record.getCheckOutTime().toLocalTime();
+                        
+                        if (checkOutTime.isBefore(workEndTime)) {
+                            if ("LATE".equals(newStatus)) {
+                                // 既迟到又早退，保持LATE状态
+                            } else {
+                                newStatus = "EARLY_LEAVE";
+                            }
                         }
                     }
+                    
+                    // 更新状态
+                    record.setStatus(newStatus);
                 }
-                
-                // 更新状态
-                record.setStatus(newStatus);
             }
+            
+            return record;
+        } catch (Exception e) {
+            System.err.println("获取今日考勤记录失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("获取今日考勤记录失败: " + e.getMessage(), e);
         }
-        
-        return record;
     }
 
     /**
@@ -91,62 +97,83 @@ public class AttendanceService {
      * @return 打卡结果信息
      */
     public String checkIn(Integer employeeId, String location) {
-        // 获取员工信息
-        Employee employee = employeeDAO.findByEmployeeId(employeeId);
-        if (employee == null) {
-            return "员工不存在";
-        }
+        try {
+            // 获取员工信息
+            Employee employee = employeeDAO.findByEmployeeId(employeeId);
+            if (employee == null) {
+                return "员工不存在";
+            }
 
-        // 获取职务配置
-        PositionConfig positionConfig = positionConfigDAO.findById(employee.getPid());
-        if (positionConfig == null) {
-            return "未找到职务配置";
-        }
+            // 检查员工是否分配了职务
+            if (employee.getPid() == null || employee.getPid().trim().isEmpty()) {
+                return "员工未分配职务，无法打卡";
+            }
 
-        LocalDate today = LocalDate.now();
-        LocalTime currentTime = LocalTime.now();
-        LocalTime workStartTime = positionConfig.getWorkStartTime().toLocalTime();
-        
-        // 计算允许的打卡时间范围：标准上班时间前1小时到标准上班时间
-        LocalTime allowedStartTime = workStartTime.minusHours(1);
-        
-        // 验证打卡时间：必须在标准上班时间前1小时到标准上班时间之间
-        if (currentTime.isBefore(allowedStartTime)) {
-            return "未到打卡时间（" + allowedStartTime + "开始）";
-        }
-        if (currentTime.isAfter(workStartTime)) {
-            return "已错过上班打卡时间（最晚" + workStartTime + "）";
-        }
+            // 获取职务配置
+            PositionConfig positionConfig = positionConfigDAO.findById(employee.getPid().trim());
+            if (positionConfig == null) {
+                return "未找到职务配置";
+            }
 
-        // 检查今日是否已打卡
-        AttendanceRecord todayRecord = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, today);
-        if (todayRecord != null && todayRecord.getCheckInTime() != null) {
-            return "今日已上班打卡，不能重复打卡";
-        }
+            if (positionConfig.getWorkStartTime() == null) {
+                return "职务配置不完整，缺少上班时间";
+            }
 
-        // 创建或更新考勤记录
-        if (todayRecord == null) {
-            todayRecord = new AttendanceRecord();
-            todayRecord.setEid(employeeId);
-            todayRecord.setRecordDate(today);
-            todayRecord.setStatus("NORMAL");
-        }
+            LocalDate today = LocalDate.now();
+            LocalTime currentTime = LocalTime.now();
+            LocalTime workStartTime = positionConfig.getWorkStartTime().toLocalTime();
+            
+            // 计算允许的打卡时间范围：标准上班时间前30分钟到后30分钟
+            LocalTime allowedStartTime = workStartTime.minusMinutes(30);
+            LocalTime allowedEndTime = workStartTime.plusMinutes(30);
+            
+            // 验证打卡时间：必须在标准上班时间前后30分钟内
+            if (currentTime.isBefore(allowedStartTime)) {
+                return "未到打卡时间（" + allowedStartTime + "开始）";
+            }
+            if (currentTime.isAfter(allowedEndTime)) {
+                return "已错过上班打卡时间（最晚" + allowedEndTime + "）";
+            }
 
-        todayRecord.setCheckInTime(LocalDateTime.now());
-        todayRecord.setCheckInLocation(location);
-        
-        // 判断是否迟到
-        if (currentTime.isAfter(workStartTime.minusMinutes(1))) {
-            todayRecord.setStatus("LATE");
-        }
+            // 检查今日是否已打卡
+            AttendanceRecord todayRecord = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, today);
+            if (todayRecord != null && todayRecord.getCheckInTime() != null) {
+                return "今日已上班打卡，不能重复打卡";
+            }
 
-        if (todayRecord.getAid() == null) {
-            attendanceRecordDAO.insert(todayRecord);
-        } else {
-            attendanceRecordDAO.update(todayRecord);
-        }
+            // 创建或更新考勤记录
+            if (todayRecord == null) {
+                todayRecord = new AttendanceRecord();
+                todayRecord.setEid(employeeId);
+                todayRecord.setRecordDate(today);
+                todayRecord.setStatus("NORMAL");
+            }
 
-        return "上班打卡成功";
+            LocalDateTime checkInDateTime = LocalDateTime.now();
+            todayRecord.setCheckInTime(checkInDateTime);
+            if (location != null) {
+                todayRecord.setCheckInLocation(location);
+            }
+            
+            // 判断是否迟到：打卡时间晚于标准上班时间算迟到
+            if (currentTime.isAfter(workStartTime)) {
+                todayRecord.setStatus("LATE");
+            } else {
+                todayRecord.setStatus("NORMAL");
+            }
+
+            if (todayRecord.getAid() == null) {
+                attendanceRecordDAO.insert(todayRecord);
+            } else {
+                attendanceRecordDAO.update(todayRecord);
+            }
+
+            return "上班打卡成功";
+        } catch (Exception e) {
+            System.err.println("上班打卡失败: " + e.getMessage());
+            e.printStackTrace();
+            return "上班打卡失败: " + e.getMessage();
+        }
     }
 
     /**
@@ -156,67 +183,102 @@ public class AttendanceService {
      * @return 打卡结果信息
      */
     public String checkOut(Integer employeeId, String location) {
-        // 获取员工信息
-        Employee employee = employeeDAO.findByEmployeeId(employeeId);
-        if (employee == null) {
-            return "员工不存在";
-        }
-
-        // 获取职务配置
-        PositionConfig positionConfig = positionConfigDAO.findById(employee.getPid());
-        if (positionConfig == null) {
-            return "未找到职务配置";
-        }
-
-        LocalDate today = LocalDate.now();
-        LocalTime currentTime = LocalTime.now();
-        LocalTime workEndTime = positionConfig.getWorkEndTime().toLocalTime();
-        
-        // 计算允许的打卡时间范围：标准下班时间到标准下班时间后1小时
-        LocalTime allowedEndTime = workEndTime.plusHours(1);
-        
-        // 验证打卡时间：必须在标准下班时间到标准下班时间后1小时之间
-        if (currentTime.isBefore(workEndTime)) {
-            return "未到下班打卡时间（" + workEndTime + "开始）";
-        }
-        if (currentTime.isAfter(allowedEndTime)) {
-            return "已错过下班打卡时间（最晚" + allowedEndTime + "）";
-        }
-
-        // 检查今日是否已打卡
-        AttendanceRecord todayRecord = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, today);
-        if (todayRecord == null || todayRecord.getCheckInTime() == null) {
-            return "请先完成上班打卡";
-        }
-        if (todayRecord.getCheckOutTime() != null) {
-            return "今日已下班打卡，不能重复打卡";
-        }
-
-        // 更新考勤记录
-        todayRecord.setCheckOutTime(LocalDateTime.now());
-        todayRecord.setCheckOutLocation(location);
-        
-        // 判断是否早退
-        if (currentTime.isBefore(workEndTime.plusMinutes(1))) {
-            if (!"LATE".equals(todayRecord.getStatus())) {
-                todayRecord.setStatus("EARLY_LEAVE");
-            } else {
-                // 如果既迟到又早退，保持LATE状态
+        try {
+            // 获取员工信息
+            Employee employee = employeeDAO.findByEmployeeId(employeeId);
+            if (employee == null) {
+                return "员工不存在";
             }
+
+            // 检查员工是否分配了职务
+            if (employee.getPid() == null || employee.getPid().trim().isEmpty()) {
+                return "员工未分配职务，无法打卡";
+            }
+
+            // 获取职务配置
+            PositionConfig positionConfig = positionConfigDAO.findById(employee.getPid().trim());
+            if (positionConfig == null) {
+                return "未找到职务配置";
+            }
+
+            if (positionConfig.getWorkEndTime() == null) {
+                return "职务配置不完整，缺少下班时间";
+            }
+
+            LocalDate today = LocalDate.now();
+            LocalTime currentTime = LocalTime.now();
+            LocalTime workEndTime = positionConfig.getWorkEndTime().toLocalTime();
+            
+            // 计算允许的打卡时间范围：标准下班时间前30分钟到后30分钟
+            LocalTime allowedStartTime = workEndTime.minusMinutes(30);
+            LocalTime allowedEndTime = workEndTime.plusMinutes(30);
+            
+            // 验证打卡时间：必须在标准下班时间前后30分钟内
+            if (currentTime.isBefore(allowedStartTime)) {
+                return "未到下班打卡时间（" + allowedStartTime + "开始）";
+            }
+            if (currentTime.isAfter(allowedEndTime)) {
+                return "已错过下班打卡时间（最晚" + allowedEndTime + "）";
+            }
+
+            // 检查今日是否已打卡
+            AttendanceRecord todayRecord = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, today);
+            if (todayRecord == null || todayRecord.getCheckInTime() == null) {
+                return "请先完成上班打卡";
+            }
+            if (todayRecord.getCheckOutTime() != null) {
+                return "今日已下班打卡，不能重复打卡";
+            }
+
+            // 更新考勤记录
+            LocalDateTime checkOutDateTime = LocalDateTime.now();
+            todayRecord.setCheckOutTime(checkOutDateTime);
+            if (location != null) {
+                todayRecord.setCheckOutLocation(location);
+            }
+            
+            // 判断是否早退：打卡时间早于标准下班时间算早退
+            String currentStatus = todayRecord.getStatus();
+            if (currentTime.isBefore(workEndTime)) {
+                // 早退
+                if ("LATE".equals(currentStatus)) {
+                    // 如果既迟到又早退，保持LATE状态
+                    // 不改变状态
+                } else {
+                    todayRecord.setStatus("EARLY_LEAVE");
+                }
+            } else {
+                // 正常下班，但如果之前是迟到，保持LATE状态
+                if (!"LATE".equals(currentStatus)) {
+                    todayRecord.setStatus("NORMAL");
+                }
+            }
+            
+            // 重新计算工作时长（必须在下班打卡时计算）
+            if (todayRecord.getCheckInTime() != null && todayRecord.getCheckOutTime() != null) {
+                long minutes = java.time.Duration.between(
+                        todayRecord.getCheckInTime().toLocalTime(),
+                        todayRecord.getCheckOutTime().toLocalTime()
+                ).toMinutes();
+                // 确保工作时长为正数
+                if (minutes > 0) {
+                    todayRecord.setWorkHours(BigDecimal.valueOf(minutes / 60.0));
+                } else {
+                    todayRecord.setWorkHours(BigDecimal.ZERO);
+                }
+                System.out.println("计算工作时长: " + minutes + " 分钟 = " + todayRecord.getWorkHours() + " 小时");
+            } else {
+                System.err.println("警告: 无法计算工作时长，checkInTime或checkOutTime为空");
+            }
+
+            attendanceRecordDAO.update(todayRecord);
+
+            return "下班打卡成功";
+        } catch (Exception e) {
+            System.err.println("下班打卡失败: " + e.getMessage());
+            e.printStackTrace();
+            return "下班打卡失败: " + e.getMessage();
         }
-
-        // 计算工作时长
-        if (todayRecord.getCheckInTime() != null && todayRecord.getCheckOutTime() != null) {
-            long minutes = java.time.Duration.between(
-                    todayRecord.getCheckInTime().toLocalTime(),
-                    todayRecord.getCheckOutTime().toLocalTime()
-            ).toMinutes();
-            todayRecord.setWorkHours(BigDecimal.valueOf(minutes / 60.0));
-        }
-
-        attendanceRecordDAO.update(todayRecord);
-
-        return "下班打卡成功";
     }
 
     /**
@@ -319,8 +381,8 @@ public class AttendanceService {
         
         // 计算汇总信息
         // 注意：当查询部门或全部员工时，employeeId为null，calculateSummary会正确处理
-        Map<String, Object> weekSummary = calculateSummary(weekRecords, weekStart, now, employeeId);
-        Map<String, Object> monthSummary = calculateSummary(monthRecords, monthStart, now, employeeId);
+        Map<String, Object> weekSummary = calculateSummary(weekRecords, weekStart, now, employeeId, departmentId);
+        Map<String, Object> monthSummary = calculateSummary(monthRecords, monthStart, now, employeeId, departmentId);
         
         System.out.println("周度汇总: " + weekSummary);
         System.out.println("月度汇总: " + monthSummary);
@@ -362,7 +424,7 @@ public class AttendanceService {
     /**
      * 计算汇总信息
      */
-    private Map<String, Object> calculateSummary(List<AttendanceRecord> records, LocalDate startDate, LocalDate endDate, Integer employeeId) {
+    private Map<String, Object> calculateSummary(List<AttendanceRecord> records, LocalDate startDate, LocalDate endDate, Integer employeeId, Integer departmentId) {
         Map<String, Object> summary = new HashMap<>();
         
         int totalDays = 0;
@@ -371,12 +433,6 @@ public class AttendanceService {
         int earlyLeaveDays = 0;
         int missingDays = 0;
         double workHours = 0.0;
-        
-        // 计算实际记录的天数（按日期去重，因为同一天可能有多个员工的记录）
-        long actualDays = records.stream()
-                .map(r -> r.getRecordDate())
-                .distinct()
-                .count();
         
         normalDays = (int) records.stream()
                 .filter(r -> "NORMAL".equals(r.getStatus()))
@@ -415,9 +471,33 @@ public class AttendanceService {
                 }
             }
         } else {
-            // 查询全部员工时，totalDays为实际记录天数，missingDays为0（因为无法计算应出勤天数）
-            totalDays = (int) actualDays;
-            missingDays = 0; // 查询全部员工时，无法计算缺卡天数
+            // 查询部门或全部员工时，需要计算所有员工的应打卡次数
+            List<Employee> employees;
+            if (departmentId != null) {
+                // 查询指定部门的员工
+                employees = employeeService.getEmployeesByDepartmentId(departmentId);
+            } else {
+                // 查询全部员工
+                employees = employeeService.getAllEmployees();
+            }
+            
+            // 计算日期范围内的工作日数（周一到周五）
+            long workDays = startDate.datesUntil(endDate.plusDays(1))
+                    .filter(date -> {
+                        int dayOfWeek = date.getDayOfWeek().getValue();
+                        return dayOfWeek >= 1 && dayOfWeek <= 5; // 周一到周五
+                    })
+                    .count();
+            
+            // 计算所有员工的应打卡总次数 = 工作日数 × 员工数
+            int totalExpectedCheckIns = (int) workDays * employees.size();
+            
+            // 计算实际打卡次数（正常+迟到+早退）
+            int actualCheckIns = normalDays + lateDays + earlyLeaveDays;
+            
+            // 缺卡人次 = 应打卡次数 - 实际打卡次数
+            missingDays = Math.max(0, totalExpectedCheckIns - actualCheckIns);
+            totalDays = (int) workDays;
         }
         
         summary.put("totalDays", totalDays);
