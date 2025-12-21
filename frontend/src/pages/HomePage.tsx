@@ -127,13 +127,15 @@ const HomePage = () => {
         // 已上班打卡，等待下班打卡
         const currentTimeStr = currentTime.toTimeString().slice(0, 5) // HH:MM
         const workEndTime = formatTime(positionConfig.workEndTime) // 提取HH:MM
-        const allowedEndTime = addHours(workEndTime, 1) // 标准下班时间后1小时
+        const allowedStartTime = subtractMinutes(workEndTime, 30) // 标准下班时间前30分钟
+        const allowedEndTime = addMinutes(workEndTime, 30) // 标准下班时间后30分钟
         
-        if (isTimeInRange(currentTimeStr, workEndTime, allowedEndTime)) {
+        // 下班打卡允许范围：标准下班时间前30分钟到后30分钟
+        if (isTimeInRange(currentTimeStr, allowedStartTime, allowedEndTime)) {
           return { text: '下班打卡', disabled: false, type: 'CHECK_OUT' as AttendanceType }
         }
-        if (isTimeBefore(currentTimeStr, workEndTime)) {
-          return { text: `未到下班打卡时间（${workEndTime}开始）`, disabled: true, type: null }
+        if (isTimeBefore(currentTimeStr, allowedStartTime)) {
+          return { text: `未到下班打卡时间（${allowedStartTime}开始）`, disabled: true, type: null }
         }
         return { text: `已错过下班打卡时间（最晚${allowedEndTime}）`, disabled: true, type: null }
       }
@@ -142,18 +144,19 @@ const HomePage = () => {
     // 没有上班打卡记录
     const currentTimeStr = currentTime.toTimeString().slice(0, 5) // HH:MM
     const workStartTime = formatTime(positionConfig.workStartTime) // 提取HH:MM
-    const allowedStartTime = subtractHours(workStartTime, 1) // 标准上班时间前1小时
+    const allowedStartTime = subtractMinutes(workStartTime, 30) // 标准上班时间前30分钟
+    const allowedEndTime = addMinutes(workStartTime, 30) // 标准上班时间后30分钟
     
-    // 上班打卡时间：标准上班时间前1小时到标准上班时间
-    if (isTimeInRange(currentTimeStr, allowedStartTime, workStartTime)) {
+    // 上班打卡允许范围：标准上班时间前30分钟到后30分钟
+    if (isTimeInRange(currentTimeStr, allowedStartTime, allowedEndTime)) {
       return { text: '上班打卡', disabled: false, type: 'CHECK_IN' as AttendanceType }
     }
     if (isTimeBefore(currentTimeStr, allowedStartTime)) {
       return { text: `未到打卡时间（${allowedStartTime}开始）`, disabled: true, type: null }
     }
-    // 超过标准上班时间但还没打卡，显示已错过
-    if (isTimeAfter(currentTimeStr, workStartTime) && !todayRecord?.checkInTime) {
-      return { text: `已错过上班打卡时间（最晚${workStartTime}）`, disabled: true, type: null }
+    // 超过允许范围，显示已错过
+    if (isTimeAfter(currentTimeStr, allowedEndTime)) {
+      return { text: `已错过上班打卡时间（最晚${allowedEndTime}）`, disabled: true, type: null }
     }
 
     return { text: '今日已打卡完成', disabled: true, type: null }
@@ -184,18 +187,22 @@ const HomePage = () => {
     return time1 >= time2
   }
 
-  // 辅助函数：时间加小时
-  const addHours = (time: string, hours: number): string => {
+  // 辅助函数：时间加分钟
+  const addMinutes = (time: string, minutes: number): string => {
     const [h, m] = time.split(':').map(Number)
-    const newHour = (h + hours) % 24
-    return `${String(newHour).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+    const totalMinutes = h * 60 + m + minutes
+    const newHour = Math.floor(totalMinutes / 60) % 24
+    const newMinute = totalMinutes % 60
+    return `${String(newHour).padStart(2, '0')}:${String(newMinute).padStart(2, '0')}`
   }
 
-  // 辅助函数：时间减小时
-  const subtractHours = (time: string, hours: number): string => {
+  // 辅助函数：时间减分钟
+  const subtractMinutes = (time: string, minutes: number): string => {
     const [h, m] = time.split(':').map(Number)
-    const newHour = (h - hours + 24) % 24
-    return `${String(newHour).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+    const totalMinutes = h * 60 + m - minutes
+    const newHour = (Math.floor(totalMinutes / 60) % 24 + 24) % 24
+    const newMinute = (totalMinutes % 60 + 60) % 60
+    return `${String(newHour).padStart(2, '0')}:${String(newMinute).padStart(2, '0')}`
   }
 
   // 辅助函数：格式化时间字符串（从HH:mm:ss提取HH:mm）

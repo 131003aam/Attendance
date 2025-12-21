@@ -400,7 +400,7 @@ public class AttendanceService {
                 .filter(r -> "EARLY_LEAVE".equals(r.getStatus()))
                 .count();
         
-        // 计算加班时长、请假天数、出差天数、补卡次数（需要查询申请表，暂时返回0）
+        // 计算加班时长、请假人次、出差人次、补卡次数（从application表查询）
         double overtimeHours = calculateOvertimeHours(employeeId, departmentId, monthStart, now);
         int leaveDays = calculateLeaveDays(employeeId, departmentId, monthStart, now);
         int businessTripDays = calculateBusinessTripDays(employeeId, departmentId, monthStart, now);
@@ -434,8 +434,10 @@ public class AttendanceService {
         int missingDays = 0;
         double workHours = 0.0;
         
+        // 正常出勤改为人次：计算所有正常上下班的次数（有checkInTime和checkOutTime的记录）
         normalDays = (int) records.stream()
                 .filter(r -> "NORMAL".equals(r.getStatus()))
+                .filter(r -> r.getCheckInTime() != null && r.getCheckOutTime() != null)
                 .count();
         
         lateDays = (int) records.stream()
@@ -451,25 +453,26 @@ public class AttendanceService {
                 .mapToDouble(r -> r.getWorkHours().doubleValue())
                 .sum();
 
-        // 计算应出勤天数（如果有员工ID）
+        // 计算应出勤天数（统一规则：周度每人应工作5天，月度21天）
+        boolean isMonth = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) >= 20; // 判断是否为月度统计
+        
         if (employeeId != null) {
-            Employee employee = employeeDAO.findByEmployeeId(employeeId);
-            if (employee != null && employee.getPid() != null) {
-                PositionConfig positionConfig = positionConfigDAO.findById(employee.getPid().trim());
-                if (positionConfig != null) {
-                    // 计算日期范围内的工作日数（周一到周五）
-                    long workDays = startDate.datesUntil(endDate.plusDays(1))
-                            .filter(date -> {
-                                int dayOfWeek = date.getDayOfWeek().getValue();
-                                return dayOfWeek >= 1 && dayOfWeek <= 5; // 周一到周五
-                            })
-                            .count();
-                    totalDays = (int) workDays;
-
-                    // 缺卡天数 = 应出勤天数 - (正常+迟到+早退)天数
-                    missingDays = Math.max(0, totalDays - (normalDays + lateDays + earlyLeaveDays));
-                }
+            // 单个员工：周度5天，月度21天
+            if (isMonth) {
+                totalDays = 21; // 月度固定21天
+            } else {
+                // 周度：计算实际工作日数，但最多5天
+                long workDays = startDate.datesUntil(endDate.plusDays(1))
+                        .filter(date -> {
+                            int dayOfWeek = date.getDayOfWeek().getValue();
+                            return dayOfWeek >= 1 && dayOfWeek <= 5; // 周一到周五
+                        })
+                        .count();
+                totalDays = (int) Math.min(workDays, 5); // 周度最多5天
             }
+
+            // 缺卡人次 = 应出勤天数 - (正常+迟到+早退)人次
+            missingDays = Math.max(0, totalDays - (normalDays + lateDays + earlyLeaveDays));
         } else {
             // 查询部门或全部员工时，需要计算所有员工的应打卡次数
             List<Employee> employees;
@@ -481,23 +484,29 @@ public class AttendanceService {
                 employees = employeeService.getAllEmployees();
             }
             
-            // 计算日期范围内的工作日数（周一到周五）
-            long workDays = startDate.datesUntil(endDate.plusDays(1))
-                    .filter(date -> {
-                        int dayOfWeek = date.getDayOfWeek().getValue();
-                        return dayOfWeek >= 1 && dayOfWeek <= 5; // 周一到周五
-                    })
-                    .count();
+            int expectedDaysPerEmployee;
+            if (isMonth) {
+                expectedDaysPerEmployee = 21; // 月度每人21天
+            } else {
+                // 周度：计算实际工作日数，但最多5天
+                long workDays = startDate.datesUntil(endDate.plusDays(1))
+                        .filter(date -> {
+                            int dayOfWeek = date.getDayOfWeek().getValue();
+                            return dayOfWeek >= 1 && dayOfWeek <= 5; // 周一到周五
+                        })
+                        .count();
+                expectedDaysPerEmployee = (int) Math.min(workDays, 5); // 周度每人最多5天
+            }
             
-            // 计算所有员工的应打卡总次数 = 工作日数 × 员工数
-            int totalExpectedCheckIns = (int) workDays * employees.size();
+            // 计算所有员工的应打卡总次数 = 每人应出勤天数 × 员工数
+            int totalExpectedCheckIns = expectedDaysPerEmployee * employees.size();
             
             // 计算实际打卡次数（正常+迟到+早退）
             int actualCheckIns = normalDays + lateDays + earlyLeaveDays;
             
             // 缺卡人次 = 应打卡次数 - 实际打卡次数
             missingDays = Math.max(0, totalExpectedCheckIns - actualCheckIns);
-            totalDays = (int) workDays;
+            totalDays = expectedDaysPerEmployee;
         }
         
         summary.put("totalDays", totalDays);
@@ -514,29 +523,51 @@ public class AttendanceService {
      * 计算加班时长（查询application表，计算已批准的加班申请时长）
      */
     private double calculateOvertimeHours(Integer employeeId, Integer departmentId, LocalDate startDate, LocalDate endDate) {
+        List<Application> overtimeApps;
+        
         if (employeeId != null) {
             // 查询指定员工的已批准加班申请
-            List<Application> overtimeApps = applicationDAO.findByEmployeeIdAndStatus(employeeId, "APPROVED");
-            return overtimeApps.stream()
+            overtimeApps = applicationDAO.findByEmployeeIdAndStatus(employeeId, "APPROVED");
+        } else if (departmentId != null) {
+            // 查询部门下所有员工的已批准加班申请
+            List<Employee> employees = employeeService.getAllEmployees();
+            String deptIdStr = String.format("D%09d", departmentId);
+            List<Integer> employeeIds = employees.stream()
+                    .filter(emp -> deptIdStr.equals(emp.getDid()))
+                    .map(Employee::getEid)
+                    .collect(java.util.stream.Collectors.toList());
+            
+            overtimeApps = new java.util.ArrayList<>();
+            for (Integer eid : employeeIds) {
+                overtimeApps.addAll(applicationDAO.findByEmployeeIdAndStatus(eid, "APPROVED"));
+            }
+        } else {
+            // 查询所有员工的已批准加班申请
+            List<Application> allApps = applicationDAO.findAll();
+            overtimeApps = allApps.stream()
                     .filter(app -> "OVERTIME".equals(app.getApplicationType()))
-                    .filter(app -> app.getStartTime() != null && app.getEndTime() != null)
-                    .filter(app -> {
-                        LocalDate appDate = app.getStartTime().toLocalDate();
-                        return !appDate.isBefore(startDate) && !appDate.isAfter(endDate);
-                    })
-                    .mapToDouble(app -> {
-                        long minutes = java.time.Duration.between(
-                                app.getStartTime(),
-                                app.getEndTime()).toMinutes();
-                        return minutes / 60.0;
-                    })
-                    .sum();
+                    .filter(app -> "APPROVED".equals(app.getStatus()))
+                    .collect(java.util.stream.Collectors.toList());
         }
-        return 0.0;
+        
+        return overtimeApps.stream()
+                .filter(app -> "OVERTIME".equals(app.getApplicationType()))
+                .filter(app -> app.getStartTime() != null && app.getEndTime() != null)
+                .filter(app -> {
+                    LocalDate appDate = app.getStartTime().toLocalDate();
+                    return !appDate.isBefore(startDate) && !appDate.isAfter(endDate);
+                })
+                .mapToDouble(app -> {
+                    long minutes = java.time.Duration.between(
+                            app.getStartTime(),
+                            app.getEndTime()).toMinutes();
+                    return minutes / 60.0;
+                })
+                .sum();
     }
 
     /**
-     * 计算请假天数（查询application表，计算已批准的请假申请天数）
+     * 计算请假人次（查询application表，计算已批准的请假申请人次）
      */
     private int calculateLeaveDays(Integer employeeId, Integer departmentId, LocalDate startDate, LocalDate endDate) {
         List<Application> leaveApps;
@@ -566,6 +597,7 @@ public class AttendanceService {
                     .collect(java.util.stream.Collectors.toList());
         }
         
+        // 改为人次：统计在日期范围内的请假申请次数（每人每次申请算1人次）
         return (int) leaveApps.stream()
                 .filter(app -> "LEAVE".equals(app.getApplicationType()))
                 .filter(app -> app.getStartTime() != null && app.getEndTime() != null)
@@ -575,19 +607,11 @@ public class AttendanceService {
                     // 检查请假日期是否在统计范围内
                     return !appEndDate.isBefore(startDate) && !appStartDate.isAfter(endDate);
                 })
-                .mapToLong(app -> {
-                    LocalDate appStartDate = app.getStartTime().toLocalDate();
-                    LocalDate appEndDate = app.getEndTime().toLocalDate();
-                    // 计算重叠天数
-                    LocalDate overlapStart = appStartDate.isAfter(startDate) ? appStartDate : startDate;
-                    LocalDate overlapEnd = appEndDate.isBefore(endDate) ? appEndDate : endDate;
-                    return java.time.temporal.ChronoUnit.DAYS.between(overlapStart, overlapEnd) + 1;
-                })
-                .sum();
+                .count(); // 改为count，统计人次而不是天数
     }
 
     /**
-     * 计算出差天数（查询application表，计算已批准的出差申请天数）
+     * 计算出差人次（查询application表，计算已批准的出差申请人次）
      */
     private int calculateBusinessTripDays(Integer employeeId, Integer departmentId, LocalDate startDate, LocalDate endDate) {
         List<Application> tripApps;
@@ -617,6 +641,7 @@ public class AttendanceService {
                     .collect(java.util.stream.Collectors.toList());
         }
         
+        // 改为人次：统计在日期范围内的出差申请次数（每人每次申请算1人次）
         return (int) tripApps.stream()
                 .filter(app -> "BUSINESS_TRIP".equals(app.getApplicationType()))
                 .filter(app -> app.getStartTime() != null && app.getEndTime() != null)
@@ -626,15 +651,7 @@ public class AttendanceService {
                     // 检查出差日期是否在统计范围内
                     return !appEndDate.isBefore(startDate) && !appStartDate.isAfter(endDate);
                 })
-                .mapToLong(app -> {
-                    LocalDate appStartDate = app.getStartTime().toLocalDate();
-                    LocalDate appEndDate = app.getEndTime().toLocalDate();
-                    // 计算重叠天数
-                    LocalDate overlapStart = appStartDate.isAfter(startDate) ? appStartDate : startDate;
-                    LocalDate overlapEnd = appEndDate.isBefore(endDate) ? appEndDate : endDate;
-                    return java.time.temporal.ChronoUnit.DAYS.between(overlapStart, overlapEnd) + 1;
-                })
-                .sum();
+                .count(); // 改为count，统计人次而不是天数
     }
 
     /**

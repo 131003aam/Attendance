@@ -249,7 +249,7 @@ const AdminAttendancePage = () => {
               <div className="stat-card">
                 <div className="stat-label">正常出勤</div>
                 <div className="stat-value success">
-                  {currentSummary.normalDays !== undefined ? `${currentSummary.normalDays} 天` : '-'}
+                  {currentSummary.normalDays !== undefined ? `${currentSummary.normalDays} 人次` : '-'}
                 </div>
               </div>
               <div className="stat-card">
