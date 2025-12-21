@@ -81,6 +81,10 @@ public class ApplicationService {
             application.setApproveTime(LocalDateTime.now());
             applicationDAO.update(application);
         }
+        //如果是补卡申请，处理补卡逻辑
+        if ("REISSUE".equals(application.getApplicationType())) {
+            processReissueApproval(application);
+        }
         return application;
     }
 
@@ -142,29 +146,91 @@ public class ApplicationService {
             LocalDate recordDate = reissueTime.toLocalDate();
             AttendanceRecord attendanceRecord = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, recordDate);
 
-            if (!"NORMAL".equals(attendanceRecord.getStatus())) {
-                // 根据补卡类型更新考勤记录
-                String reissueType = reissueApplication.getReissueType();
-                if ("MISSING_CHECK_IN".equals(reissueType)) {
-                    // 补上班卡
-                    attendanceRecord.setCheckInTime(reissueTime);
-                } else if ("MISSING_CHECK_OUT".equals(reissueType)) {
-                    // 补下班卡
-                    attendanceRecord.setCheckOutTime(reissueTime);
-                } else if ("BOTH".equals(reissueType)) {
-                    // 补全天卡
-                    attendanceRecord.setCheckInTime(reissueTime);
-                    attendanceRecord.setCheckOutTime(reissueTime);
+            // 处理考勤记录不存在或状态为缺卡的情况
+            if (attendanceRecord == null || !"NORMAL".equals(attendanceRecord.getStatus())) {
+                // 如果考勤记录不存在，创建新记录
+                if (attendanceRecord == null) {
+                    attendanceRecord = new AttendanceRecord();
+                    attendanceRecord.setEid(employeeId);
+                    attendanceRecord.setRecordDate(recordDate);
+                }
+
+                // 获取员工职务配置
+                Employee employee = employeeDAO.findByEmployeeId(employeeId);
+                if (employee != null && employee.getPid() != null) {
+                    PositionConfig positionConfig = positionConfigDAO.findById(employee.getPid().trim());
+                    if (positionConfig != null) {
+                        // 设置标准上下班时间
+                        LocalDateTime standardStartTime = LocalDateTime.of(recordDate, positionConfig.getWorkStartTime().toLocalTime());
+                        LocalDateTime standardEndTime = LocalDateTime.of(recordDate, positionConfig.getWorkEndTime().toLocalTime());
+
+                        // 根据补卡类型设置打卡时间
+                        String reissueType = reissueApplication.getReissueType();
+                        if ("MISSING_CHECK_IN".equals(reissueType)) {
+                            // 补上班卡：设置标准上班时间
+                            attendanceRecord.setCheckInTime(standardStartTime);
+                            // 如果下班卡已存在，保持原下班时间，否则设置标准下班时间
+                            if (attendanceRecord.getCheckOutTime() == null) {
+                                attendanceRecord.setCheckOutTime(standardEndTime);
+                            }
+                        } else if ("MISSING_CHECK_OUT".equals(reissueType)) {
+                            // 补下班卡：设置标准下班时间
+                            attendanceRecord.setCheckOutTime(standardEndTime);
+                            // 如果上班卡已存在，保持原上班时间，否则设置标准上班时间
+                            if (attendanceRecord.getCheckInTime() == null) {
+                                attendanceRecord.setCheckInTime(standardStartTime);
+                            }
+                        } else if ("BOTH".equals(reissueType)) {
+                            // 补全天卡：设置标准上下班时间
+                            attendanceRecord.setCheckInTime(standardStartTime);
+                            attendanceRecord.setCheckOutTime(standardEndTime);
+                        }
+                    }
                 }
 
                 // 更新考勤状态和工作时长
                 updateAttendanceStatusAndWorkHours(attendanceRecord);
 
                 // 保存更新后的考勤记录
-                attendanceRecordDAO.update(attendanceRecord);
+                if (attendanceRecord.getAid() == null) {
+                    attendanceRecordDAO.insert(attendanceRecord);
+                } else {
+                    attendanceRecordDAO.update(attendanceRecord);
+                }
+            }
+            // 对于其他状态(NORMAL, LATE, EARLY_LEAVE)，只更新对应的打卡时间
+            else if (!"NORMAL".equals(attendanceRecord.getStatus())) {
+                // 获取员工职务配置
+                Employee employee = employeeDAO.findByEmployeeId(employeeId);
+                if (employee != null && employee.getPid() != null) {
+                    PositionConfig positionConfig = positionConfigDAO.findById(employee.getPid().trim());
+                    if (positionConfig != null) {
+                        // 设置标准打卡时间
+                        LocalDateTime standardTime = LocalDateTime.of(recordDate,
+                                "LATE".equals(attendanceRecord.getStatus()) ?
+                                        positionConfig.getWorkStartTime().toLocalTime() :
+                                        positionConfig.getWorkEndTime().toLocalTime());
+
+                        // 根据状态更新对应打卡时间
+                        if ("LATE".equals(attendanceRecord.getStatus())) {
+                            // 迟到状态，更新上班打卡时间为标准时间
+                            attendanceRecord.setCheckInTime(standardTime);
+                        } else if ("EARLY_LEAVE".equals(attendanceRecord.getStatus())) {
+                            // 早退状态，更新下班打卡时间为标准时间
+                            attendanceRecord.setCheckOutTime(standardTime);
+                        }
+
+                        // 更新考勤状态和工作时长
+                        updateAttendanceStatusAndWorkHours(attendanceRecord);
+
+                        // 保存更新后的考勤记录
+                        attendanceRecordDAO.update(attendanceRecord);
+                    }
+                }
             }
         }
     }
+
     private void updateAttendanceStatusAndWorkHours(AttendanceRecord record) {
         // 根据当前职务配置重新计算考勤状态
         Employee employee = employeeDAO.findByEmployeeId(record.getEid());

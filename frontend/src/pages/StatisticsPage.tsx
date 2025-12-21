@@ -181,6 +181,7 @@ const StatisticsPage = () => {
   }
 
   // 根据查询到的记录计算实际统计
+  /*
   const getQueryStatistics = () => {
     if (!records.length)
         return {
@@ -197,8 +198,12 @@ const StatisticsPage = () => {
     const missingDays = records.filter(r => r.status === 'MISSING').length
     const normalDays = records.filter(r => r.status === 'NORMAL').length
     const workHours = records.reduce((sum, r) => sum + (r.workHours || 0), 0)
-    
-    return {
+    // 修改缺卡天数计算逻辑
+    //const totalDays = records.length;
+    // 缺卡天数 = 总天数 - 正常天数（包括迟到和早退的情况）
+    //const missingDays = totalDays - normalDays - lateDays - earlyLeaveDays;
+
+      return {
       lateDays,
       earlyLeaveDays,
       missingDays,
@@ -207,6 +212,7 @@ const StatisticsPage = () => {
       totalDays: records.length
     }
   }
+     */
 
   if (loading && !stats) {
     return <div className="statistics-page"><div className="loading">加载中...</div></div>
@@ -353,98 +359,67 @@ const StatisticsPage = () => {
         </div>
       )}
 
-      {/* 其他统计信息 */}
-      {stats && (
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-label">缺卡天数</div>
-            <div className="stat-value error">
-              {(() => {
-                // 如果已经查询了记录，使用查询结果的统计
-                const queryStats = getQueryStatistics()
-                  if (queryStats && showDetail) {
-                      // 查询状态下，缺卡天数 = 应出勤天数 - 正常出勤天数
-                      const totalDays = queryStats.totalDays;
-                      const normalDays = queryStats.normalDays;
-                      // 如果需要考虑应出勤天数，可以根据实际情况调整计算方式
-                      const missingDays = totalDays - normalDays;
-                      return `${missingDays} 天`;
-                  }
-                  //if (queryStats) {
-                //  return `${queryStats.missingDays} 天`
-                //}
-                // 否则使用汇总统计
-                return viewType === 'week' && stats.weekSummary 
-                  ? `${stats.weekSummary.missingDays} 天`
-                  : stats.monthSummary 
-                  ? `${stats.monthSummary.missingDays} 天`
-                  : `${stats.missingDays} 天`
-              })()}
-            </div>
-          </div>
+        {/* 其他统计信息 */}
+        {stats && (
+            <div className="stats-grid">
+                <div className="stat-card">
+                    <div className="stat-label">缺卡天数</div>
+                    <div className="stat-value error">
+                        {viewType === 'week' && stats.weekSummary
+                            ? `${stats.weekSummary.missingDays} 天`
+                            : viewType === 'month' && stats.monthSummary
+                                ? `${stats.monthSummary.missingDays} 天`
+                                : `${stats.missingDays} 天`}
+                    </div>
+                </div>
 
-          <div className="stat-card">
-            <div className="stat-label">迟到天数</div>
-            <div className="stat-value warning">
-              {(() => {
-                // 如果已经查询了记录，使用查询结果的统计
-                const queryStats = getQueryStatistics()
-                if (queryStats) {
-                  return `${queryStats.lateDays} 天`
-                }
-                // 否则使用汇总统计
-                return viewType === 'week' && stats.weekSummary 
-                  ? `${stats.weekSummary.lateDays} 天`
-                  : stats.monthSummary 
-                  ? `${stats.monthSummary.lateDays} 天`
-                  : `${stats.lateCount} 天`
-              })()}
-            </div>
-          </div>
+                <div className="stat-card">
+                    <div className="stat-label">迟到天数</div>
+                    <div className="stat-value warning">
+                        {viewType === 'week' && stats.weekSummary
+                            ? `${stats.weekSummary.lateDays} 天`
+                            : viewType === 'month' && stats.monthSummary
+                                ? `${stats.monthSummary.lateDays} 天`
+                                : `${stats.lateCount} 天`}
+                    </div>
+                </div>
 
-          <div className="stat-card">
-            <div className="stat-label">早退天数</div>
-            <div className="stat-value warning">
-              {(() => {
-                // 如果已经查询了记录，使用查询结果的统计
-                const queryStats = getQueryStatistics()
-                if (queryStats) {
-                  return `${queryStats.earlyLeaveDays} 天`
-                }
-                // 否则使用汇总统计
-                return viewType === 'week' && stats.weekSummary 
-                  ? `${stats.weekSummary.earlyLeaveDays} 天`
-                  : stats.monthSummary 
-                  ? `${stats.monthSummary.earlyLeaveDays} 天`
-                  : `${stats.earlyLeaveCount} 天`
-              })()}
-            </div>
-          </div>
+                <div className="stat-card">
+                    <div className="stat-label">早退天数</div>
+                    <div className="stat-value warning">
+                        {viewType === 'week' && stats.weekSummary
+                            ? `${stats.weekSummary.earlyLeaveDays} 天`
+                            : viewType === 'month' && stats.monthSummary
+                                ? `${stats.monthSummary.earlyLeaveDays} 天`
+                                : `${stats.earlyLeaveCount} 天`}
+                    </div>
+                </div>
 
-          {stats.overtimeHours !== undefined && (
-            <div className="stat-card">
-              <div className="stat-label">加班时长</div>
-              <div className="stat-value">{stats.overtimeHours.toFixed(1)} 小时</div>
-            </div>
-          )}
+                {stats.overtimeHours !== undefined && (
+                    <div className="stat-card">
+                        <div className="stat-label">加班时长</div>
+                        <div className="stat-value">{stats.overtimeHours.toFixed(1)} 小时</div>
+                    </div>
+                )}
 
-          {stats.leaveDays !== undefined && (
-            <div className="stat-card">
-              <div className="stat-label">请假天数</div>
-              <div className="stat-value">{stats.leaveDays} 天</div>
-            </div>
-          )}
+                {stats.leaveDays !== undefined && (
+                    <div className="stat-card">
+                        <div className="stat-label">请假天数</div>
+                        <div className="stat-value">{stats.leaveDays} 天</div>
+                    </div>
+                )}
 
-          {stats.reissueCount !== undefined && (
-            <div className="stat-card">
-              <div className="stat-label">补卡次数</div>
-              <div className="stat-value">{stats.reissueCount} 次</div>
+                {stats.reissueCount !== undefined && (
+                    <div className="stat-card">
+                        <div className="stat-label">补卡次数</div>
+                        <div className="stat-value">{stats.reissueCount} 次</div>
+                    </div>
+                )}
             </div>
-          )}
-        </div>
-      )}
+        )}
 
-      {/* 查询筛选 */}
+
+        {/* 查询筛选 */}
       <div className="filter-section">
         <h2>考勤明细查询</h2>
         <div className="filter-controls">

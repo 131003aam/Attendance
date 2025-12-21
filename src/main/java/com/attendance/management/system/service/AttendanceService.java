@@ -396,7 +396,7 @@ public class AttendanceService {
             if (employee != null && employee.getPid() != null) {
                 PositionConfig positionConfig = positionConfigDAO.findById(employee.getPid().trim());
                 if (positionConfig != null) {
-                    // 计算日期范围内的工作日数（简化处理，排除周末）
+                    // 计算日期范围内的工作日数（周一到周五）
                     long workDays = startDate.datesUntil(endDate.plusDays(1))
                             .filter(date -> {
                                 int dayOfWeek = date.getDayOfWeek().getValue();
@@ -404,7 +404,9 @@ public class AttendanceService {
                             })
                             .count();
                     totalDays = (int) workDays;
-                    missingDays = Math.max(0, totalDays - (int)actualDays);
+
+                    // 缺卡天数 = 应出勤天数 - (正常+迟到+早退)天数
+                    missingDays = Math.max(0, totalDays - (normalDays + lateDays + earlyLeaveDays));
                 }
             }
         } else {

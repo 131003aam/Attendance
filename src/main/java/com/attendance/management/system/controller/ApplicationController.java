@@ -291,6 +291,7 @@ public class ApplicationController {
                         error.put("success", false);
                         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
                     }
+
                     // 验证1: 补卡日期不能与正常考勤日期相同
                     AttendanceRecord existingRecord = attendanceRecordDAO.findByEmployeeIdAndDate(employeeId, reissueDate);
                     if (existingRecord != null &&  "NORMAL".equals(existingRecord.getStatus())) {
