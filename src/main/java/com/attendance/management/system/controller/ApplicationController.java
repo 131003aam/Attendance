@@ -249,12 +249,7 @@ public class ApplicationController {
             } else if (employeeId != null) {
                 applications = applicationService.getApplicationsByEmployeeId(employeeId);
             } else if (status != null) {
-                applications = applicationService.getPendingApplications();
-                if (!"PENDING".equals(status)) {
-                    applications = applicationService.getAllApplications().stream()
-                            .filter(app -> status.equals(app.getStatus()))
-                            .collect(Collectors.toList());
-                }
+                applications = applicationService.getApplicationsByStatus(status);
             } else {
                 applications = applicationService.getAllApplications();
             }

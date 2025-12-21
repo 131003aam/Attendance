@@ -6,15 +6,16 @@ import './AdminPages.css'
 const AdminApplicationsPage = () => {
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'>('all')
 
   useEffect(() => {
     loadApplications()
-  }, [])
+  }, [statusFilter])
 
   const loadApplications = async () => {
     setLoading(true)
     try {
-      const data = await getApplications()
+      const data = await getApplications(undefined, statusFilter !== 'all' ? statusFilter : undefined)
       setApplications(data)
     } catch (error) {
       console.error('加载申请列表失败:', error)
@@ -29,12 +30,28 @@ const AdminApplicationsPage = () => {
       await loadApplications()
     } catch (error) {
       console.error('审批失败:', error)
+      alert('审批失败，请重试')
     }
   }
 
   return (
     <div className="admin-page">
       <h1>审批管理</h1>
+      
+      <div style={{ marginBottom: '20px' }}>
+        <label style={{ marginRight: '10px' }}>状态筛选：</label>
+        <select 
+          value={statusFilter} 
+          onChange={(e) => setStatusFilter(e.target.value as any)}
+          style={{ padding: '5px 10px', fontSize: '14px' }}
+        >
+          <option value="all">全部</option>
+          <option value="PENDING">待审批</option>
+          <option value="APPROVED">已通过</option>
+          <option value="REJECTED">已驳回</option>
+          <option value="CANCELLED">已被撤销</option>
+        </select>
+      </div>
 
       {loading ? (
         <div className="loading">加载中...</div>
@@ -60,7 +77,11 @@ const AdminApplicationsPage = () => {
                       ? '请假'
                       : app.type === 'OVERTIME'
                       ? '加班'
-                      : '出差'}
+                      : app.type === 'BUSINESS_TRIP'
+                      ? '出差'
+                      : app.type === 'REISSUE'
+                      ? '补卡'
+                      : app.type}
                   </td>
                   <td>
                     {new Date(app.startTime).toLocaleString('zh-CN')} 至{' '}
@@ -73,7 +94,11 @@ const AdminApplicationsPage = () => {
                         ? '待审批'
                         : app.status === 'APPROVED'
                         ? '已通过'
-                        : '已驳回'}
+                        : app.status === 'REJECTED'
+                        ? '已驳回'
+                        : app.status === 'CANCELLED'
+                        ? '已被撤销'
+                        : app.status}
                     </span>
                   </td>
                   <td>
@@ -93,6 +118,7 @@ const AdminApplicationsPage = () => {
                         </button>
                       </>
                     )}
+                    {app.status !== 'PENDING' && <span>-</span>}
                   </td>
                 </tr>
               ))}

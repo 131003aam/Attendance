@@ -93,6 +93,7 @@ export interface Statistics {
   // 新增字段
   overtimeHours?: number
   leaveDays?: number
+  businessTripDays?: number
   reissueCount?: number
   // 月度/周度汇总
   monthSummary?: {

@@ -48,6 +48,10 @@ public class ApplicationService {
         return applicationDAO.findByStatus("PENDING");
     }
 
+    public List<Application> getApplicationsByStatus(String status) {
+        return applicationDAO.findByStatus(status);
+    }
+
     public List<Application> getApplicationsByEmployeeIdAndStatus(Integer eid, String status) {
         return applicationDAO.findByEmployeeIdAndStatus(eid, status);
     }
@@ -80,10 +84,10 @@ public class ApplicationService {
             application.setApproverId(approverId);
             application.setApproveTime(LocalDateTime.now());
             applicationDAO.update(application);
-        }
-        //如果是补卡申请，处理补卡逻辑
-        if ("REISSUE".equals(application.getApplicationType())) {
-            processReissueApproval(application);
+            //如果是补卡申请，处理补卡逻辑
+            if ("REISSUE".equals(application.getApplicationType())) {
+                processReissueApproval(application);
+            }
         }
         return application;
     }

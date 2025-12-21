@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getPendingApplications, reviewApplication } from '../api'
+import { getApplications, reviewApplication } from '../api'
 import type { Application, ApprovalRequest } from '../types'
 import './ApprovalPage.css'
 
@@ -18,20 +18,22 @@ const ApprovalPage = () => {
   const loadApplications = async () => {
     setLoading(true)
     try {
-      const data = await getPendingApplications()
-      let filtered = data
-
-      // 状态筛选
-      if (filter !== 'all') {
-        filtered = filtered.filter(app => {
-          if (filter === 'pending') return app.status === 'PENDING'
-          if (filter === 'approved') return app.status === 'APPROVED'
-          if (filter === 'rejected') return app.status === 'REJECTED'
-          return true
-        })
+      // 根据筛选器确定状态参数
+      let status: string | undefined
+      if (filter === 'pending') {
+        status = 'PENDING'
+      } else if (filter === 'approved') {
+        status = 'APPROVED'
+      } else if (filter === 'rejected') {
+        status = 'REJECTED'
       }
+      // filter === 'all' 时不传status，获取所有申请
 
+      // 获取申请列表（不传employeeId，获取所有申请）
+      const data = await getApplications(undefined, status)
+      
       // 类型筛选
+      let filtered = data
       if (typeFilter !== 'all') {
         filtered = filtered.filter(app => app.type === typeFilter)
       }

@@ -516,24 +516,50 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> approveApplication(
             @PathVariable Long id,
             @RequestBody Map<String, Object> request) {
-        // 从数据库查询实际的申请记录
-        Application applicationRecord = applicationService.getApplicationById(id.intValue());
+        try {
+            // 从数据库查询实际的申请记录
+            Application applicationRecord = applicationService.getApplicationById(id.intValue());
+            if (applicationRecord == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "申请不存在");
+                return ResponseEntity.status(404).body(error);
+            }
 
-        // 如果是补卡申请且审批通过，需要更新考勤记录
-        boolean approved = (Boolean) request.getOrDefault("approved", false);
-        if (approved && "REISSUE".equals(applicationRecord.getApplicationType())) {
-            // 调用服务更新考勤记录
-            applicationService.processReissueApproval(applicationRecord);
+            // 获取审批人ID（可以从认证信息中获取，这里暂时使用默认值）
+            Integer approverId = 10001; // 默认管理员ID，实际应该从认证信息中获取
+            
+            // 如果是补卡申请且审批通过，需要更新考勤记录
+            boolean approved = (Boolean) request.getOrDefault("approved", false);
+            
+            // 调用服务更新申请状态
+            if (approved) {
+                applicationService.approveApplication(id.intValue(), approverId);
+            } else {
+                String rejectReason = (String) request.getOrDefault("reason", "审批未通过");
+                applicationService.rejectApplication(id.intValue(), approverId, rejectReason);
+            }
+            
+            // 重新查询更新后的申请记录
+            Application updatedApplication = applicationService.getApplicationById(id.intValue());
+            
+            Map<String, Object> application = new HashMap<>();
+            application.put("id", id);
+            application.put("employeeId", updatedApplication.getEid());
+            application.put("type", updatedApplication.getApplicationType());
+            application.put("startTime", updatedApplication.getStartTime());
+            application.put("endTime", updatedApplication.getEndTime());
+            application.put("reason", updatedApplication.getReason());
+            application.put("status", updatedApplication.getStatus());
+            application.put("approverId", updatedApplication.getApproverId());
+            application.put("approveTime", updatedApplication.getApproveTime());
+            application.put("rejectReason", updatedApplication.getRejectReason());
+            
+            return ResponseEntity.ok(application);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", "审批失败: " + e.getMessage());
+            return ResponseEntity.status(500).body(error);
         }
-        Map<String, Object> application = new HashMap<>();
-        application.put("id", id);
-        application.put("employeeId", applicationRecord.getEid());
-        application.put("type", applicationRecord.getApplicationType());
-        application.put("startTime", applicationRecord.getStartTime());
-        application.put("endTime", applicationRecord.getEndTime());
-        application.put("reason", applicationRecord.getReason());
-        application.put("status", approved ? "APPROVED" : "REJECTED");
-        return ResponseEntity.ok(application);
     }
 }
 

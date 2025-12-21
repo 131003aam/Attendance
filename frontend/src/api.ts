@@ -352,14 +352,17 @@ export const getAttendanceRecordsWithFilter = async (params?: {
 }
 
 // 获取申请列表
-export const getApplications = async (): Promise<Application[]> => {
+export const getApplications = async (employeeId?: number, status?: string): Promise<Application[]> => {
   if (MOCK_MODE) {
     await new Promise((resolve) => setTimeout(resolve, 300))
     return []
   }
 
   try {
-    const response = await api.get<Application[]>('/applications')
+    const params: any = {}
+    if (employeeId) params.employeeId = employeeId
+    if (status) params.status = status
+    const response = await api.get<Application[]>('/applications', { params })
     return response.data
   } catch (error) {
     throw error instanceof Error ? error : new Error('获取申请列表失败')

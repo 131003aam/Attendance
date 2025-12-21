@@ -35,6 +35,9 @@ public class AttendanceService {
     @Autowired
     private ApplicationDAO applicationDAO;
 
+    @Autowired
+    private EmployeeService employeeService;
+
 
     /**
      * 获取今日考勤记录，并根据当前职务配置重新计算状态
@@ -335,9 +338,10 @@ public class AttendanceService {
                 .filter(r -> "EARLY_LEAVE".equals(r.getStatus()))
                 .count();
         
-        // 计算加班时长、请假天数、补卡次数（需要查询申请表，暂时返回0）
+        // 计算加班时长、请假天数、出差天数、补卡次数（需要查询申请表，暂时返回0）
         double overtimeHours = calculateOvertimeHours(employeeId, departmentId, monthStart, now);
         int leaveDays = calculateLeaveDays(employeeId, departmentId, monthStart, now);
+        int businessTripDays = calculateBusinessTripDays(employeeId, departmentId, monthStart, now);
         int reissueCount = calculateReissueCount(employeeId, departmentId, monthStart, now);
         
         stats.put("weekWorkHours", weekWorkHours);
@@ -347,6 +351,7 @@ public class AttendanceService {
         stats.put("earlyLeaveCount", (int)earlyLeaveCount);
         stats.put("overtimeHours", overtimeHours);
         stats.put("leaveDays", leaveDays);
+        stats.put("businessTripDays", businessTripDays);
         stats.put("reissueCount", reissueCount);
         stats.put("weekSummary", weekSummary);
         stats.put("monthSummary", monthSummary);
@@ -454,48 +459,145 @@ public class AttendanceService {
      * 计算请假天数（查询application表，计算已批准的请假申请天数）
      */
     private int calculateLeaveDays(Integer employeeId, Integer departmentId, LocalDate startDate, LocalDate endDate) {
+        List<Application> leaveApps;
+        
         if (employeeId != null) {
             // 查询指定员工的已批准请假申请
-            List<Application> leaveApps = applicationDAO.findByEmployeeIdAndStatus(employeeId, "APPROVED");
-            return (int) leaveApps.stream()
+            leaveApps = applicationDAO.findByEmployeeIdAndStatus(employeeId, "APPROVED");
+        } else if (departmentId != null) {
+            // 查询部门下所有员工的已批准请假申请
+            List<Employee> employees = employeeService.getAllEmployees();
+            String deptIdStr = String.format("D%09d", departmentId);
+            List<Integer> employeeIds = employees.stream()
+                    .filter(emp -> deptIdStr.equals(emp.getDid()))
+                    .map(Employee::getEid)
+                    .collect(java.util.stream.Collectors.toList());
+            
+            leaveApps = new java.util.ArrayList<>();
+            for (Integer eid : employeeIds) {
+                leaveApps.addAll(applicationDAO.findByEmployeeIdAndStatus(eid, "APPROVED"));
+            }
+        } else {
+            // 查询所有员工的已批准请假申请
+            List<Application> allApps = applicationDAO.findAll();
+            leaveApps = allApps.stream()
                     .filter(app -> "LEAVE".equals(app.getApplicationType()))
-                    .filter(app -> app.getStartTime() != null && app.getEndTime() != null)
-                    .filter(app -> {
-                        LocalDate appStartDate = app.getStartTime().toLocalDate();
-                        LocalDate appEndDate = app.getEndTime().toLocalDate();
-                        // 检查请假日期是否在统计范围内
-                        return !appEndDate.isBefore(startDate) && !appStartDate.isAfter(endDate);
-                    })
-                    .mapToLong(app -> {
-                        LocalDate appStartDate = app.getStartTime().toLocalDate();
-                        LocalDate appEndDate = app.getEndTime().toLocalDate();
-                        // 计算重叠天数
-                        LocalDate overlapStart = appStartDate.isAfter(startDate) ? appStartDate : startDate;
-                        LocalDate overlapEnd = appEndDate.isBefore(endDate) ? appEndDate : endDate;
-                        return java.time.temporal.ChronoUnit.DAYS.between(overlapStart, overlapEnd) + 1;
-                    })
-                    .sum();
+                    .filter(app -> "APPROVED".equals(app.getStatus()))
+                    .collect(java.util.stream.Collectors.toList());
         }
-        return 0;
+        
+        return (int) leaveApps.stream()
+                .filter(app -> "LEAVE".equals(app.getApplicationType()))
+                .filter(app -> app.getStartTime() != null && app.getEndTime() != null)
+                .filter(app -> {
+                    LocalDate appStartDate = app.getStartTime().toLocalDate();
+                    LocalDate appEndDate = app.getEndTime().toLocalDate();
+                    // 检查请假日期是否在统计范围内
+                    return !appEndDate.isBefore(startDate) && !appStartDate.isAfter(endDate);
+                })
+                .mapToLong(app -> {
+                    LocalDate appStartDate = app.getStartTime().toLocalDate();
+                    LocalDate appEndDate = app.getEndTime().toLocalDate();
+                    // 计算重叠天数
+                    LocalDate overlapStart = appStartDate.isAfter(startDate) ? appStartDate : startDate;
+                    LocalDate overlapEnd = appEndDate.isBefore(endDate) ? appEndDate : endDate;
+                    return java.time.temporal.ChronoUnit.DAYS.between(overlapStart, overlapEnd) + 1;
+                })
+                .sum();
+    }
+
+    /**
+     * 计算出差天数（查询application表，计算已批准的出差申请天数）
+     */
+    private int calculateBusinessTripDays(Integer employeeId, Integer departmentId, LocalDate startDate, LocalDate endDate) {
+        List<Application> tripApps;
+        
+        if (employeeId != null) {
+            // 查询指定员工的已批准出差申请
+            tripApps = applicationDAO.findByEmployeeIdAndStatus(employeeId, "APPROVED");
+        } else if (departmentId != null) {
+            // 查询部门下所有员工的已批准出差申请
+            List<Employee> employees = employeeService.getAllEmployees();
+            String deptIdStr = String.format("D%09d", departmentId);
+            List<Integer> employeeIds = employees.stream()
+                    .filter(emp -> deptIdStr.equals(emp.getDid()))
+                    .map(Employee::getEid)
+                    .collect(java.util.stream.Collectors.toList());
+            
+            tripApps = new java.util.ArrayList<>();
+            for (Integer eid : employeeIds) {
+                tripApps.addAll(applicationDAO.findByEmployeeIdAndStatus(eid, "APPROVED"));
+            }
+        } else {
+            // 查询所有员工的已批准出差申请
+            List<Application> allApps = applicationDAO.findAll();
+            tripApps = allApps.stream()
+                    .filter(app -> "BUSINESS_TRIP".equals(app.getApplicationType()))
+                    .filter(app -> "APPROVED".equals(app.getStatus()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+        
+        return (int) tripApps.stream()
+                .filter(app -> "BUSINESS_TRIP".equals(app.getApplicationType()))
+                .filter(app -> app.getStartTime() != null && app.getEndTime() != null)
+                .filter(app -> {
+                    LocalDate appStartDate = app.getStartTime().toLocalDate();
+                    LocalDate appEndDate = app.getEndTime().toLocalDate();
+                    // 检查出差日期是否在统计范围内
+                    return !appEndDate.isBefore(startDate) && !appStartDate.isAfter(endDate);
+                })
+                .mapToLong(app -> {
+                    LocalDate appStartDate = app.getStartTime().toLocalDate();
+                    LocalDate appEndDate = app.getEndTime().toLocalDate();
+                    // 计算重叠天数
+                    LocalDate overlapStart = appStartDate.isAfter(startDate) ? appStartDate : startDate;
+                    LocalDate overlapEnd = appEndDate.isBefore(endDate) ? appEndDate : endDate;
+                    return java.time.temporal.ChronoUnit.DAYS.between(overlapStart, overlapEnd) + 1;
+                })
+                .sum();
     }
 
     /**
      * 计算补卡次数（查询application表，计算已批准的补卡申请次数）
+     * 统计本月审批通过的补卡申请，按审批时间统计
      */
     private int calculateReissueCount(Integer employeeId, Integer departmentId, LocalDate startDate, LocalDate endDate) {
+        List<Application> reissueApps;
+        
         if (employeeId != null) {
             // 查询指定员工的已批准补卡申请
-            List<Application> reissueApps = applicationDAO.findByEmployeeIdAndStatus(employeeId, "APPROVED");
-            return (int) reissueApps.stream()
+            reissueApps = applicationDAO.findByEmployeeIdAndStatus(employeeId, "APPROVED");
+        } else if (departmentId != null) {
+            // 查询部门下所有员工的已批准补卡申请
+            List<Employee> employees = employeeService.getAllEmployees();
+            String deptIdStr = String.format("D%09d", departmentId);
+            List<Integer> employeeIds = employees.stream()
+                    .filter(emp -> deptIdStr.equals(emp.getDid()))
+                    .map(Employee::getEid)
+                    .collect(java.util.stream.Collectors.toList());
+            
+            reissueApps = new java.util.ArrayList<>();
+            for (Integer eid : employeeIds) {
+                reissueApps.addAll(applicationDAO.findByEmployeeIdAndStatus(eid, "APPROVED"));
+            }
+        } else {
+            // 查询所有员工的已批准补卡申请
+            List<Application> allApps = applicationDAO.findAll();
+            reissueApps = allApps.stream()
                     .filter(app -> "REISSUE".equals(app.getApplicationType()))
-                    .filter(app -> app.getReissueTime() != null)
-                    .filter(app -> {
-                        LocalDate reissueDate = app.getReissueTime().toLocalDate();
-                        return !reissueDate.isBefore(startDate) && !reissueDate.isAfter(endDate);
-                    })
-                    .count();
+                    .filter(app -> "APPROVED".equals(app.getStatus()))
+                    .collect(java.util.stream.Collectors.toList());
         }
-        return 0;
+        
+        return (int) reissueApps.stream()
+                .filter(app -> "REISSUE".equals(app.getApplicationType()))
+                .filter(app -> app.getApproveTime() != null) // 必须有审批时间
+                .filter(app -> {
+                    // 按审批时间统计，而不是补卡时间
+                    LocalDate approveDate = app.getApproveTime().toLocalDate();
+                    return !approveDate.isBefore(startDate) && !approveDate.isAfter(endDate);
+                })
+                .count();
     }
 }
 

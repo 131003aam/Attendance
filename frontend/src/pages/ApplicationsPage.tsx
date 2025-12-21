@@ -1,21 +1,25 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getApplications, cancelApplication } from '../api'
+import { useAuth } from '../contexts/AuthContext'
 import type { Application } from '../types'
 import './ApplicationsPage.css'
 
 const ApplicationsPage = () => {
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
 
   useEffect(() => {
     loadApplications()
-  }, [])
+  }, [user?.employeeId])
 
   const loadApplications = async () => {
+    if (!user?.employeeId) return
+    
     setLoading(true)
     try {
-      const data = await getApplications()
+      const data = await getApplications(user.employeeId)
       setApplications(data)
     } catch (error) {
       console.error('加载申请列表失败:', error)
@@ -60,6 +64,8 @@ const ApplicationsPage = () => {
         return '已通过'
       case 'REJECTED':
         return '已驳回'
+      case 'CANCELLED':
+        return '已被撤销'
       default:
         return status
     }
