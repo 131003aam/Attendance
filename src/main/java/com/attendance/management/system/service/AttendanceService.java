@@ -412,6 +412,15 @@ public class AttendanceService {
         int monthBusinessTripDays = calculateBusinessTripDays(employeeId, departmentId, monthStart, now);
         int monthReissueCount = calculateReissueCount(employeeId, departmentId, monthStart, now);
         
+        // 如果是单个员工查询，计算请假天数（天数跨度），用于个人界面显示
+        int monthLeaveDaysCount = 0;
+        int weekLeaveDaysCount = 0;
+        if (employeeId != null) {
+            // 个人查询：计算请假天数（统计日期跨度）
+            weekLeaveDaysCount = calculateLeaveDaysCount(employeeId, weekStart, now);
+            monthLeaveDaysCount = calculateLeaveDaysCount(employeeId, monthStart, now);
+        }
+        
         stats.put("weekWorkHours", weekWorkHours);
         stats.put("monthWorkHours", monthWorkHours);
         stats.put("missingDays", missingDays);
@@ -432,9 +441,17 @@ public class AttendanceService {
         
         // 为了向后兼容，保留旧的字段名（使用月度数据）
         stats.put("overtimeHours", monthOvertimeHours);
-        stats.put("leaveDays", monthLeaveDays);
+        stats.put("leaveDays", monthLeaveDays);  // 人次（用于管理员界面）
         stats.put("businessTripDays", monthBusinessTripDays);
         stats.put("reissueCount", monthReissueCount);
+        
+        // 个人界面专用：请假天数（天数跨度）
+        if (employeeId != null) {
+            stats.put("weekLeaveDaysCount", weekLeaveDaysCount);
+            stats.put("monthLeaveDaysCount", monthLeaveDaysCount);
+            // 个人界面使用天数，覆盖 leaveDays 字段
+            stats.put("leaveDays", monthLeaveDaysCount);
+        }
         
         stats.put("weekSummary", weekSummary);
         stats.put("monthSummary", monthSummary);
@@ -474,21 +491,24 @@ public class AttendanceService {
                 .mapToDouble(r -> r.getWorkHours().doubleValue())
                 .sum();
 
-        // 计算应出勤天数（统一规则：周度每人应工作5天，月度21天）
+        // 计算应出勤天数：根据实际日期范围计算工作日数（周一到周五）
         boolean isMonth = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) >= 20; // 判断是否为月度统计
         
+        // 计算从startDate到endDate之间的实际工作日数（周一到周五）
+        long workDays = startDate.datesUntil(endDate.plusDays(1))
+                .filter(date -> {
+                    int dayOfWeek = date.getDayOfWeek().getValue();
+                    return dayOfWeek >= 1 && dayOfWeek <= 5; // 周一到周五
+                })
+                .count();
+        
         if (employeeId != null) {
-            // 单个员工：周度5天，月度21天
+            // 单个员工：使用实际工作日数
             if (isMonth) {
-                totalDays = 21; // 月度固定21天
+                // 月度：使用从本月1号到当天的实际工作日数
+                totalDays = (int) workDays;
             } else {
                 // 周度：计算实际工作日数，但最多5天
-                long workDays = startDate.datesUntil(endDate.plusDays(1))
-                        .filter(date -> {
-                            int dayOfWeek = date.getDayOfWeek().getValue();
-                            return dayOfWeek >= 1 && dayOfWeek <= 5; // 周一到周五
-                        })
-                        .count();
                 totalDays = (int) Math.min(workDays, 5); // 周度最多5天
             }
 
@@ -507,15 +527,10 @@ public class AttendanceService {
             
             int expectedDaysPerEmployee;
             if (isMonth) {
-                expectedDaysPerEmployee = 21; // 月度每人21天
+                // 月度：使用从本月1号到当天的实际工作日数
+                expectedDaysPerEmployee = (int) workDays;
             } else {
                 // 周度：计算实际工作日数，但最多5天
-                long workDays = startDate.datesUntil(endDate.plusDays(1))
-                        .filter(date -> {
-                            int dayOfWeek = date.getDayOfWeek().getValue();
-                            return dayOfWeek >= 1 && dayOfWeek <= 5; // 周一到周五
-                        })
-                        .count();
                 expectedDaysPerEmployee = (int) Math.min(workDays, 5); // 周度每人最多5天
             }
             
@@ -629,6 +644,43 @@ public class AttendanceService {
                     return !appEndDate.isBefore(startDate) && !appStartDate.isAfter(endDate);
                 })
                 .count(); // 改为count，统计人次而不是天数
+    }
+
+    /**
+     * 计算请假天数（统计日期跨度，用于个人界面）
+     * 计算请假申请在统计范围内的实际天数
+     */
+    private int calculateLeaveDaysCount(Integer employeeId, LocalDate startDate, LocalDate endDate) {
+        // 查询指定员工的已批准请假申请
+        List<Application> leaveApps = applicationDAO.findByEmployeeIdAndStatus(employeeId, "APPROVED");
+        
+        int totalDays = 0;
+        for (Application app : leaveApps) {
+            if (!"LEAVE".equals(app.getApplicationType())) {
+                continue;
+            }
+            if (app.getStartTime() == null || app.getEndTime() == null) {
+                continue;
+            }
+            
+            LocalDate appStartDate = app.getStartTime().toLocalDate();
+            LocalDate appEndDate = app.getEndTime().toLocalDate();
+            
+            // 检查请假日期是否与统计范围有重叠
+            if (appEndDate.isBefore(startDate) || appStartDate.isAfter(endDate)) {
+                continue; // 没有重叠，跳过
+            }
+            
+            // 计算重叠部分的天数
+            LocalDate overlapStart = appStartDate.isBefore(startDate) ? startDate : appStartDate;
+            LocalDate overlapEnd = appEndDate.isAfter(endDate) ? endDate : appEndDate;
+            
+            // 计算天数（包含开始和结束日期）
+            long days = java.time.temporal.ChronoUnit.DAYS.between(overlapStart, overlapEnd) + 1;
+            totalDays += (int) days;
+        }
+        
+        return totalDays;
     }
 
     /**
