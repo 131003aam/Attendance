@@ -53,13 +53,8 @@ const AdminAttendancePage = () => {
     try {
       const data = await getEmployees()
       if (selectedDepartmentId) {
-        const filtered = data.filter(emp => {
-          const deptIdStr = String(selectedDepartmentId)
-          const empDeptId = String(emp.departmentId)
-          return empDeptId === deptIdStr || 
-                 empDeptId.replace('D', '') === deptIdStr ||
-                 empDeptId === `D${deptIdStr.padStart(9, '0')}`
-        })
+        // 部门ID现在都是数字类型，直接比较
+        const filtered = data.filter(emp => emp.departmentId === selectedDepartmentId)
         setEmployees(filtered)
       } else {
         setEmployees(data)
@@ -194,14 +189,11 @@ const AdminAttendancePage = () => {
               }}
             >
               <option value="">全部部门</option>
-              {departments.map(dept => {
-                const deptIdNum = dept.id.replace(/^D0*/, '')
-                return (
-                  <option key={dept.id} value={deptIdNum}>
-                    {dept.name}
-                  </option>
-                )
-              })}
+              {departments.map(dept => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
             </select>
           </div>
           <div className="filter-item">
@@ -277,8 +269,8 @@ const AdminAttendancePage = () => {
             <div className="stat-label">加班时长</div>
             <div className="stat-value">
               {viewType === 'week'
-                ? (stats.weekOvertimeHours !== undefined ? `${stats.weekOvertimeHours.toFixed(1)} 小时` : '-')
-                : (stats.monthOvertimeHours !== undefined ? `${stats.monthOvertimeHours.toFixed(1)} 小时` : '-')}
+                ? (stats.weekOvertimeHours !== undefined && stats.weekOvertimeHours !== null ? `${stats.weekOvertimeHours.toFixed(1)} 小时` : '0.0 小时')
+                : (stats.monthOvertimeHours !== undefined && stats.monthOvertimeHours !== null ? `${stats.monthOvertimeHours.toFixed(1)} 小时` : '0.0 小时')}
             </div>
           </div>
 
@@ -286,8 +278,8 @@ const AdminAttendancePage = () => {
             <div className="stat-label">请假</div>
             <div className="stat-value">
               {viewType === 'week'
-                ? (stats.weekLeaveDays !== undefined ? `${stats.weekLeaveDays} 人次` : '-')
-                : (stats.monthLeaveDays !== undefined ? `${stats.monthLeaveDays} 人次` : '-')}
+                ? (stats.weekLeaveDays !== undefined && stats.weekLeaveDays !== null ? `${stats.weekLeaveDays} 人次` : '0 人次')
+                : (stats.monthLeaveDays !== undefined && stats.monthLeaveDays !== null ? `${stats.monthLeaveDays} 人次` : '0 人次')}
             </div>
           </div>
 
@@ -295,8 +287,8 @@ const AdminAttendancePage = () => {
             <div className="stat-label">出差</div>
             <div className="stat-value">
               {viewType === 'week'
-                ? (stats.weekBusinessTripDays !== undefined ? `${stats.weekBusinessTripDays} 人次` : '-')
-                : (stats.monthBusinessTripDays !== undefined ? `${stats.monthBusinessTripDays} 人次` : '-')}
+                ? (stats.weekBusinessTripDays !== undefined && stats.weekBusinessTripDays !== null ? `${stats.weekBusinessTripDays} 人次` : '0 人次')
+                : (stats.monthBusinessTripDays !== undefined && stats.monthBusinessTripDays !== null ? `${stats.monthBusinessTripDays} 人次` : '0 人次')}
             </div>
           </div>
 
@@ -304,8 +296,8 @@ const AdminAttendancePage = () => {
             <div className="stat-label">补卡次数</div>
             <div className="stat-value">
               {viewType === 'week'
-                ? (stats.weekReissueCount !== undefined ? `${stats.weekReissueCount} 次` : '-')
-                : (stats.monthReissueCount !== undefined ? `${stats.monthReissueCount} 次` : '-')}
+                ? (stats.weekReissueCount !== undefined && stats.weekReissueCount !== null ? `${stats.weekReissueCount} 次` : '0 次')
+                : (stats.monthReissueCount !== undefined && stats.monthReissueCount !== null ? `${stats.monthReissueCount} 次` : '0 次')}
             </div>
           </div>
         </div>

@@ -54,8 +54,6 @@ const AdminApplicationsPage = () => {
           value={statusFilter} 
           onChange={(e) => setStatusFilter(e.target.value as any)}
           style={{ padding: '5px 10px', fontSize: '14px' }}
-          title="选择申请状态进行筛选"
-          aria-label="申请状态筛选"
         >
           <option value="all">全部</option>
           <option value="PENDING">待审批</option>
