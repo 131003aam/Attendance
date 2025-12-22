@@ -88,14 +88,82 @@ public class AdminController {
     @PostMapping("/employees")
     public ResponseEntity<Map<String, Object>> createEmployee(@RequestBody Map<String, Object> request) {
         try {
+            // 验证必填字段
+            String name = (String) request.get("name");
+            if (name == null || name.trim().isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "员工姓名不能为空");
+                error.put("success", false);
+                return ResponseEntity.status(400).body(error);
+            }
+            
+            // 验证部门ID和职务ID
+            Object deptIdObj = request.get("departmentId");
+            Object posIdObj = request.get("positionId");
+            
+            if (deptIdObj == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "部门ID不能为空");
+                error.put("success", false);
+                return ResponseEntity.status(400).body(error);
+            }
+            
+            if (posIdObj == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "职务ID不能为空");
+                error.put("success", false);
+                return ResponseEntity.status(400).body(error);
+            }
+            
+            int deptIdNum = ((Number) deptIdObj).intValue();
+            int posIdNum = ((Number) posIdObj).intValue();
+            
+            if (deptIdNum <= 0) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "部门ID无效");
+                error.put("success", false);
+                return ResponseEntity.status(400).body(error);
+            }
+            
+            if (posIdNum <= 0) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "职务ID无效");
+                error.put("success", false);
+                return ResponseEntity.status(400).body(error);
+            }
+            
+            // 验证部门和职务是否存在
+            String deptIdStr = String.format("D%09d", deptIdNum);
+            String posIdStr = String.format("P%09d", posIdNum);
+            
+            Department dept = departmentService.getDepartmentById(deptIdStr);
+            if (dept == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "部门不存在");
+                error.put("success", false);
+                return ResponseEntity.status(400).body(error);
+            }
+            
+            PositionConfig pos = positionConfigService.getPositionConfigById(posIdStr);
+            if (pos == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "职务不存在");
+                error.put("success", false);
+                return ResponseEntity.status(400).body(error);
+            }
+            
             Employee employee = new Employee();
-            employee.setName((String) request.get("name"));
-            employee.setPhone((String) request.get("phone"));
-            // 将数字ID转换为字符串格式（格式：D000000001或P000000001）
-            int deptIdNum = ((Number) request.get("departmentId")).intValue();
-            int posIdNum = ((Number) request.get("positionId")).intValue();
-            employee.setDid(String.format("D%09d", deptIdNum));
-            employee.setPid(String.format("P%09d", posIdNum));
+            employee.setName(name.trim());
+            
+            // 处理Phone字段：如果为空字符串，设置为null（避免违反UNIQUE约束）
+            String phone = (String) request.get("phone");
+            if (phone != null && phone.trim().isEmpty()) {
+                phone = null;
+            }
+            employee.setPhone(phone);
+            
+            employee.setDid(deptIdStr);
+            employee.setPid(posIdStr);
             employee.setRole((String) request.getOrDefault("role", "EMPLOYEE"));
             employee.setSex("男"); // 默认值
             employee.setPassword("123456"); // 默认密码
@@ -106,13 +174,33 @@ public class AdminController {
             result.put("employeeId", employee.getEid());
             result.put("name", employee.getName());
             result.put("phone", employee.getPhone());
-            result.put("departmentId", employee.getDid());
-            result.put("positionId", employee.getPid());
+            result.put("departmentId", deptIdNum); // 返回数字ID给前端
+            result.put("positionId", posIdNum); // 返回数字ID给前端
             result.put("role", employee.getRole());
             result.put("status", "ACTIVE");
             
             return ResponseEntity.ok(result);
+        } catch (NumberFormatException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", "部门ID或职务ID格式错误");
+            error.put("success", false);
+            return ResponseEntity.status(400).body(error);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 处理外键约束或唯一约束违反
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && errorMsg.contains("Phone")) {
+                errorMsg = "该手机号已被使用";
+            } else if (errorMsg != null && errorMsg.contains("foreign key")) {
+                errorMsg = "部门或职务不存在";
+            } else {
+                errorMsg = "数据完整性约束违反: " + e.getMessage();
+            }
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", errorMsg);
+            error.put("success", false);
+            return ResponseEntity.status(400).body(error);
         } catch (Exception e) {
+            e.printStackTrace(); // 打印完整堆栈信息用于调试
             Map<String, Object> error = new HashMap<>();
             error.put("message", "创建员工失败: " + e.getMessage());
             error.put("success", false);
@@ -201,7 +289,12 @@ public class AdminController {
             List<Map<String, Object>> result = new ArrayList<>();
             for (Department dept : departments) {
                 Map<String, Object> deptMap = new HashMap<>();
-                deptMap.put("id", dept.getDid()); // 使用字符串ID
+                // 将字符串ID转换为数字（用于前端显示，与getEmployees保持一致）
+                try {
+                    deptMap.put("id", Integer.parseInt(dept.getDid().replaceAll("[^0-9]", "")));
+                } catch (Exception e) {
+                    deptMap.put("id", 0);
+                }
                 deptMap.put("name", dept.getDName());
                 deptMap.put("description", dept.getDescription());
                 deptMap.put("managerId", dept.getManagerId());
@@ -242,7 +335,12 @@ public class AdminController {
             departmentService.createDepartment(department);
             
             Map<String, Object> result = new HashMap<>();
-            result.put("id", department.getDid());
+            // 将字符串ID转换为数字（与getDepartments保持一致）
+            try {
+                result.put("id", Integer.parseInt(department.getDid().replaceAll("[^0-9]", "")));
+            } catch (Exception e) {
+                result.put("id", 0);
+            }
             result.put("name", department.getDName());
             result.put("description", department.getDescription());
             result.put("managerId", department.getManagerId());
@@ -286,7 +384,12 @@ public class AdminController {
             departmentService.updateDepartment(department);
             
             Map<String, Object> result = new HashMap<>();
-            result.put("id", department.getDid());
+            // 将字符串ID转换为数字（与getDepartments保持一致）
+            try {
+                result.put("id", Integer.parseInt(department.getDid().replaceAll("[^0-9]", "")));
+            } catch (Exception e) {
+                result.put("id", 0);
+            }
             result.put("name", department.getDName());
             result.put("description", department.getDescription());
             result.put("managerId", department.getManagerId());
@@ -302,14 +405,38 @@ public class AdminController {
     @DeleteMapping("/departments/{id}")
     public ResponseEntity<Map<String, Object>> deleteDepartment(@PathVariable String id) {
         try {
+            // 检查部门是否存在
+            Department department = departmentService.getDepartmentById(id);
+            if (department == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "部门不存在");
+                error.put("success", false);
+                return ResponseEntity.status(404).body(error);
+            }
+            
+            // 检查该部门是否还有员工
+            if (employeeService.hasEmployeesInDepartment(id)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "该部门下还有员工，无法删除。请先将员工转移到其他部门或删除员工后再删除部门。");
+                error.put("success", false);
+                return ResponseEntity.status(400).body(error);
+            }
+            
             departmentService.deleteDepartment(id);
             Map<String, Object> response = new HashMap<>();
             response.put("message", "部门删除成功");
             response.put("success", true);
             return ResponseEntity.ok(response);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 处理外键约束违反（虽然我们已经检查了，但作为双重保险）
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", "该部门下还有员工，无法删除。请先将员工转移到其他部门或删除员工后再删除部门。");
+            error.put("success", false);
+            return ResponseEntity.status(400).body(error);
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("message", "删除部门失败: " + e.getMessage());
+            error.put("success", false);
             return ResponseEntity.status(500).body(error);
         }
     }
@@ -340,7 +467,12 @@ public class AdminController {
             List<Map<String, Object>> result = new ArrayList<>();
             for (PositionConfig pos : positions) {
                 Map<String, Object> posMap = new HashMap<>();
-                posMap.put("id", pos.getPid()); // 使用字符串ID
+                // 将字符串ID转换为数字（用于前端显示，与getEmployees保持一致）
+                try {
+                    posMap.put("id", Integer.parseInt(pos.getPid().replaceAll("[^0-9]", "")));
+                } catch (Exception e) {
+                    posMap.put("id", 0);
+                }
                 posMap.put("name", pos.getPName());
                 posMap.put("workStartTime", formatTime(pos.getWorkStartTime()));
                 posMap.put("workEndTime", formatTime(pos.getWorkEndTime()));
@@ -393,7 +525,12 @@ public class AdminController {
             positionConfigService.createPositionConfig(positionConfig);
             
             Map<String, Object> result = new HashMap<>();
-            result.put("id", positionConfig.getPid());
+            // 将字符串ID转换为数字（与getPositionConfigs保持一致）
+            try {
+                result.put("id", Integer.parseInt(positionConfig.getPid().replaceAll("[^0-9]", "")));
+            } catch (Exception e) {
+                result.put("id", 0);
+            }
             result.put("name", positionConfig.getPName());
             result.put("workStartTime", formatTime(positionConfig.getWorkStartTime()));
             result.put("workEndTime", formatTime(positionConfig.getWorkEndTime()));
@@ -444,7 +581,12 @@ public class AdminController {
             positionConfigService.updatePositionConfig(positionConfig);
             
             Map<String, Object> result = new HashMap<>();
-            result.put("id", positionConfig.getPid());
+            // 将字符串ID转换为数字（与getPositionConfigs保持一致）
+            try {
+                result.put("id", Integer.parseInt(positionConfig.getPid().replaceAll("[^0-9]", "")));
+            } catch (Exception e) {
+                result.put("id", 0);
+            }
             result.put("name", positionConfig.getPName());
             result.put("workStartTime", formatTime(positionConfig.getWorkStartTime()));
             result.put("workEndTime", formatTime(positionConfig.getWorkEndTime()));
@@ -463,14 +605,38 @@ public class AdminController {
     @DeleteMapping("/positions/{id}")
     public ResponseEntity<Map<String, Object>> deletePositionConfig(@PathVariable String id) {
         try {
+            // 检查职务配置是否存在
+            PositionConfig positionConfig = positionConfigService.getPositionConfigById(id);
+            if (positionConfig == null) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "职务配置不存在");
+                error.put("success", false);
+                return ResponseEntity.status(404).body(error);
+            }
+            
+            // 检查该职务是否还有员工
+            if (employeeService.hasEmployeesInPosition(id)) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "该职务下还有员工，无法删除。请先将员工转移到其他职务或删除员工后再删除职务。");
+                error.put("success", false);
+                return ResponseEntity.status(400).body(error);
+            }
+            
             positionConfigService.deletePositionConfig(id);
             Map<String, Object> response = new HashMap<>();
             response.put("message", "职务配置删除成功");
             response.put("success", true);
             return ResponseEntity.ok(response);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 处理外键约束违反（虽然我们已经检查了，但作为双重保险）
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", "该职务下还有员工，无法删除。请先将员工转移到其他职务或删除员工后再删除职务。");
+            error.put("success", false);
+            return ResponseEntity.status(400).body(error);
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("message", "删除职务配置失败: " + e.getMessage());
+            error.put("success", false);
             return ResponseEntity.status(500).body(error);
         }
     }

@@ -391,7 +391,7 @@ public class AttendanceService {
         Object missingDaysObj = monthSummary.get("missingDays");
         int missingDays = missingDaysObj != null ? ((Number) missingDaysObj).intValue() : 0;
         
-        // 计算迟到和早退次数
+        // 计算迟到和早退次数（月度）
         long lateCount = monthRecords.stream()
                 .filter(r -> "LATE".equals(r.getStatus()))
                 .count();
@@ -400,21 +400,42 @@ public class AttendanceService {
                 .filter(r -> "EARLY_LEAVE".equals(r.getStatus()))
                 .count();
         
-        // 计算加班时长、请假人次、出差人次、补卡次数（从application表查询）
-        double overtimeHours = calculateOvertimeHours(employeeId, departmentId, monthStart, now);
-        int leaveDays = calculateLeaveDays(employeeId, departmentId, monthStart, now);
-        int businessTripDays = calculateBusinessTripDays(employeeId, departmentId, monthStart, now);
-        int reissueCount = calculateReissueCount(employeeId, departmentId, monthStart, now);
+        // 计算周度的加班时长、请假人次、出差人次、补卡次数（从application表查询）
+        double weekOvertimeHours = calculateOvertimeHours(employeeId, departmentId, weekStart, now);
+        int weekLeaveDays = calculateLeaveDays(employeeId, departmentId, weekStart, now);
+        int weekBusinessTripDays = calculateBusinessTripDays(employeeId, departmentId, weekStart, now);
+        int weekReissueCount = calculateReissueCount(employeeId, departmentId, weekStart, now);
+        
+        // 计算月度的加班时长、请假人次、出差人次、补卡次数（从application表查询）
+        double monthOvertimeHours = calculateOvertimeHours(employeeId, departmentId, monthStart, now);
+        int monthLeaveDays = calculateLeaveDays(employeeId, departmentId, monthStart, now);
+        int monthBusinessTripDays = calculateBusinessTripDays(employeeId, departmentId, monthStart, now);
+        int monthReissueCount = calculateReissueCount(employeeId, departmentId, monthStart, now);
         
         stats.put("weekWorkHours", weekWorkHours);
         stats.put("monthWorkHours", monthWorkHours);
         stats.put("missingDays", missingDays);
         stats.put("lateCount", (int)lateCount);
         stats.put("earlyLeaveCount", (int)earlyLeaveCount);
-        stats.put("overtimeHours", overtimeHours);
-        stats.put("leaveDays", leaveDays);
-        stats.put("businessTripDays", businessTripDays);
-        stats.put("reissueCount", reissueCount);
+        
+        // 周度数据
+        stats.put("weekOvertimeHours", weekOvertimeHours);
+        stats.put("weekLeaveDays", weekLeaveDays);
+        stats.put("weekBusinessTripDays", weekBusinessTripDays);
+        stats.put("weekReissueCount", weekReissueCount);
+        
+        // 月度数据
+        stats.put("monthOvertimeHours", monthOvertimeHours);
+        stats.put("monthLeaveDays", monthLeaveDays);
+        stats.put("monthBusinessTripDays", monthBusinessTripDays);
+        stats.put("monthReissueCount", monthReissueCount);
+        
+        // 为了向后兼容，保留旧的字段名（使用月度数据）
+        stats.put("overtimeHours", monthOvertimeHours);
+        stats.put("leaveDays", monthLeaveDays);
+        stats.put("businessTripDays", monthBusinessTripDays);
+        stats.put("reissueCount", monthReissueCount);
+        
         stats.put("weekSummary", weekSummary);
         stats.put("monthSummary", monthSummary);
         

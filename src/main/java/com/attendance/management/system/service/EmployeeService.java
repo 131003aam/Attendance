@@ -36,6 +36,41 @@ public class EmployeeService {
         return employeeDAO.findByDepartmentId(departmentId);
     }
 
+    /**
+     * 检查部门是否还有员工
+     * @param departmentIdStr 部门ID（字符串格式，如 "D000000001"）
+     * @return 如果还有员工返回true，否则返回false
+     */
+    public boolean hasEmployeesInDepartment(String departmentIdStr) {
+        // 将字符串ID转换为数字ID
+        try {
+            int deptIdNum = Integer.parseInt(departmentIdStr.replaceAll("[^0-9]", ""));
+            List<Employee> employees = employeeDAO.findByDepartmentId(deptIdNum);
+            return employees != null && !employees.isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 检查职务是否还有员工
+     * @param positionIdStr 职务ID（字符串格式，如 "P000000001"）
+     * @return 如果还有员工返回true，否则返回false
+     */
+    public boolean hasEmployeesInPosition(String positionIdStr) {
+        // 查询所有员工，检查是否有使用该职务的
+        List<Employee> allEmployees = employeeDAO.findAll();
+        if (allEmployees == null || allEmployees.isEmpty()) {
+            return false;
+        }
+        for (Employee emp : allEmployees) {
+            if (emp.getPid() != null && emp.getPid().trim().equals(positionIdStr.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void createEmployee(Employee employee) {
         employeeDAO.insert(employee);
     }

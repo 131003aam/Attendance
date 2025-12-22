@@ -90,11 +90,21 @@ export interface Statistics {
   missingDays: number
   lateCount: number
   earlyLeaveCount: number
-  // 新增字段
+  // 向后兼容的字段（使用月度数据）
   overtimeHours?: number
   leaveDays?: number
   businessTripDays?: number
   reissueCount?: number
+  // 周度数据
+  weekOvertimeHours?: number
+  weekLeaveDays?: number
+  weekBusinessTripDays?: number
+  weekReissueCount?: number
+  // 月度数据
+  monthOvertimeHours?: number
+  monthLeaveDays?: number
+  monthBusinessTripDays?: number
+  monthReissueCount?: number
   // 月度/周度汇总
   monthSummary?: {
     totalDays: number
@@ -228,7 +238,7 @@ export interface ApprovalRequest {
 
 // 部门信息
 export interface Department {
-  id: string // 字符型，长度10，格式：D000000001
+  id: number // 数字ID（后端返回时已从字符串ID转换）
   name: string
   description?: string
   managerId?: number
@@ -237,7 +247,7 @@ export interface Department {
 
 // 职务配置
 export interface PositionConfig {
-  id: string // 字符型，长度10，格式：P000000001
+  id: number // 数字ID（后端返回时已从字符串ID转换）
   name: string
   workStartTime: string // 格式: "HH:mm"
   workEndTime: string // 格式: "HH:mm"

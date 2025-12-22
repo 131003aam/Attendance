@@ -44,7 +44,7 @@ const AdminDepartmentsPage = () => {
     setShowModal(true)
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (!window.confirm('确定要删除该部门吗？删除后该部门下的员工将无法正常使用系统。')) {
       return
     }

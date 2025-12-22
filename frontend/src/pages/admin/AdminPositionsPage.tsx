@@ -61,7 +61,7 @@ const AdminPositionsPage = () => {
     setShowModal(true)
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (!window.confirm('确定要删除该职务配置吗？删除后使用该职务的员工将无法正常打卡。')) {
       return
     }

@@ -594,14 +594,16 @@ export const createDepartment = async (data: Omit<Department, 'id'>): Promise<De
 }
 
 // 管理员：更新部门
-export const updateDepartment = async (id: string, data: Partial<Department>): Promise<Department> => {
+export const updateDepartment = async (id: number | string, data: Partial<Department>): Promise<Department> => {
   if (MOCK_MODE) {
     await new Promise((resolve) => setTimeout(resolve, 400))
-    return { id, ...data } as Department
+    return { id: typeof id === 'number' ? id : parseInt(id.replace(/[^0-9]/g, '')), ...data } as Department
   }
 
   try {
-    const response = await api.put<Department>(`/admin/departments/${id}`, data)
+    // 将数字ID转换为字符串格式（D000000001）
+    const idStr = typeof id === 'number' ? `D${String(id).padStart(9, '0')}` : id
+    const response = await api.put<Department>(`/admin/departments/${idStr}`, data)
     return response.data
   } catch (error) {
     throw error instanceof Error ? error : new Error('更新部门失败')
@@ -609,16 +611,20 @@ export const updateDepartment = async (id: string, data: Partial<Department>): P
 }
 
 // 管理员：删除部门
-export const deleteDepartment = async (id: string): Promise<void> => {
+export const deleteDepartment = async (id: number | string): Promise<void> => {
   if (MOCK_MODE) {
     await new Promise((resolve) => setTimeout(resolve, 300))
     return
   }
 
   try {
-    await api.delete(`/admin/departments/${id}`)
-  } catch (error) {
-    throw error instanceof Error ? error : new Error('删除部门失败')
+    // 将数字ID转换为字符串格式（D000000001）
+    const idStr = typeof id === 'number' ? `D${String(id).padStart(9, '0')}` : id
+    await api.delete(`/admin/departments/${idStr}`)
+  } catch (error: any) {
+    // 从响应中提取错误消息
+    const errorMessage = error?.response?.data?.message || error?.message || '删除部门失败'
+    throw new Error(errorMessage)
   }
 }
 
@@ -665,14 +671,16 @@ export const createPositionConfig = async (data: Omit<PositionConfig, 'id'>): Pr
 }
 
 // 管理员：更新职务配置
-export const updatePositionConfig = async (id: string, data: Partial<PositionConfig>): Promise<PositionConfig> => {
+export const updatePositionConfig = async (id: number | string, data: Partial<PositionConfig>): Promise<PositionConfig> => {
   if (MOCK_MODE) {
     await new Promise((resolve) => setTimeout(resolve, 400))
-    return { id, ...data } as PositionConfig
+    return { id: typeof id === 'number' ? id : parseInt(id.replace(/[^0-9]/g, '')), ...data } as PositionConfig
   }
 
   try {
-    const response = await api.put<PositionConfig>(`/admin/positions/${id}`, data)
+    // 将数字ID转换为字符串格式（P000000001）
+    const idStr = typeof id === 'number' ? `P${String(id).padStart(9, '0')}` : id
+    const response = await api.put<PositionConfig>(`/admin/positions/${idStr}`, data)
     return response.data
   } catch (error) {
     throw error instanceof Error ? error : new Error('更新职务配置失败')
@@ -680,16 +688,20 @@ export const updatePositionConfig = async (id: string, data: Partial<PositionCon
 }
 
 // 管理员：删除职务配置
-export const deletePositionConfig = async (id: string): Promise<void> => {
+export const deletePositionConfig = async (id: number | string): Promise<void> => {
   if (MOCK_MODE) {
     await new Promise((resolve) => setTimeout(resolve, 300))
     return
   }
 
   try {
-    await api.delete(`/admin/positions/${id}`)
-  } catch (error) {
-    throw error instanceof Error ? error : new Error('删除职务配置失败')
+    // 将数字ID转换为字符串格式（P000000001）
+    const idStr = typeof id === 'number' ? `P${String(id).padStart(9, '0')}` : id
+    await api.delete(`/admin/positions/${idStr}`)
+  } catch (error: any) {
+    // 从响应中提取错误消息
+    const errorMessage = error?.response?.data?.message || error?.message || '删除职务配置失败'
+    throw new Error(errorMessage)
   }
 }
 

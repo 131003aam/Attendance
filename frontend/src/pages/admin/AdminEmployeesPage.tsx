@@ -115,13 +115,36 @@ const AdminEmployeesPage = () => {
       return
     }
 
+    if (!formData.departmentId || formData.departmentId === '') {
+      alert('请选择部门')
+      return
+    }
+
+    if (!formData.positionId || formData.positionId === '') {
+      alert('请选择职务')
+      return
+    }
+
+    const deptId = Number(formData.departmentId)
+    const posId = Number(formData.positionId)
+
+    if (isNaN(deptId) || deptId <= 0) {
+      alert('部门ID无效')
+      return
+    }
+
+    if (isNaN(posId) || posId <= 0) {
+      alert('职务ID无效')
+      return
+    }
+
     try {
       if (editingEmp) {
         await updateEmployee(editingEmp.employeeId, {
           name: formData.name,
           phone: formData.phone,
-          departmentId: Number(formData.departmentId),
-          positionId: Number(formData.positionId),
+          departmentId: deptId,
+          positionId: posId,
           role: formData.role,
           status: formData.status,
         })
@@ -129,17 +152,18 @@ const AdminEmployeesPage = () => {
         await createEmployee({
           name: formData.name,
           phone: formData.phone,
-          departmentId: Number(formData.departmentId),
-          positionId: Number(formData.positionId),
+          departmentId: deptId,
+          positionId: posId,
           role: formData.role,
           status: formData.status,
         })
       }
       setShowModal(false)
       await loadEmployees()
-    } catch (error) {
+    } catch (error: any) {
       console.error('保存员工失败:', error)
-      alert(error instanceof Error ? error.message : '保存员工失败')
+      const errorMessage = error?.response?.data?.message || error?.message || '保存员工失败'
+      alert(errorMessage)
     }
   }
 

@@ -276,28 +276,36 @@ const AdminAttendancePage = () => {
           <div className="stat-card">
             <div className="stat-label">加班时长</div>
             <div className="stat-value">
-              {stats.overtimeHours !== undefined ? `${stats.overtimeHours.toFixed(1)} 小时` : '-'}
+              {viewType === 'week'
+                ? (stats.weekOvertimeHours !== undefined ? `${stats.weekOvertimeHours.toFixed(1)} 小时` : '-')
+                : (stats.monthOvertimeHours !== undefined ? `${stats.monthOvertimeHours.toFixed(1)} 小时` : '-')}
             </div>
           </div>
 
           <div className="stat-card">
             <div className="stat-label">请假</div>
             <div className="stat-value">
-              {stats.leaveDays !== undefined ? `${stats.leaveDays} 人次` : '-'}
+              {viewType === 'week'
+                ? (stats.weekLeaveDays !== undefined ? `${stats.weekLeaveDays} 人次` : '-')
+                : (stats.monthLeaveDays !== undefined ? `${stats.monthLeaveDays} 人次` : '-')}
             </div>
           </div>
 
           <div className="stat-card">
             <div className="stat-label">出差</div>
             <div className="stat-value">
-              {stats.businessTripDays !== undefined ? `${stats.businessTripDays} 人次` : '-'}
+              {viewType === 'week'
+                ? (stats.weekBusinessTripDays !== undefined ? `${stats.weekBusinessTripDays} 人次` : '-')
+                : (stats.monthBusinessTripDays !== undefined ? `${stats.monthBusinessTripDays} 人次` : '-')}
             </div>
           </div>
 
           <div className="stat-card">
             <div className="stat-label">补卡次数</div>
             <div className="stat-value">
-              {stats.reissueCount !== undefined ? `${stats.reissueCount} 次` : '-'}
+              {viewType === 'week'
+                ? (stats.weekReissueCount !== undefined ? `${stats.weekReissueCount} 次` : '-')
+                : (stats.monthReissueCount !== undefined ? `${stats.monthReissueCount} 次` : '-')}
             </div>
           </div>
         </div>
